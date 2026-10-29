@@ -1,0 +1,47 @@
+name: Publish reader
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the site and chapter catalogue
+        shell: bash
+        run: |
+          mkdir -p site/library
+          cp index.html site/
+          find databases -type f \( -iname "*.db" -o -iname "*.gitabase" -o -iname "*.sqlite" \) -print0 > /tmp/db-list
+          mapfile -d "" -t files < /tmp/db-list
+          if (( ${#files[@]} )); then
+            python tools/split_gitabase.py "${files[@]}" --out site/library
+          else
+            printf "{\"version\":1,\"databases\":[]}\n" > site/library/manifest.json
+          fi
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
