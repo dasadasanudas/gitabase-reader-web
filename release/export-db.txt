@@ -1,3 +1,2 @@
-# Databases to publish as zip slices under /export/ on the next Pages build.
-# Requested 2026-11-01 to check the Hindi SB text data. Clear this list afterwards.
-SB_Gitabase_Linked_CantoFixed.db
+# Databases to publish as zip slices under /export/ on the next Pages build (one file name per line).
+# None pending: the Hindi SB export of 2026-11-01 has been collected.

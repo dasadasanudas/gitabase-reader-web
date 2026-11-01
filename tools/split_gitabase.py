@@ -1,11 +1,17 @@
 #!/usr/bin/env python3
-"""Convert Gitabase SQLite files into a small manifest and per-chapter databases."""
+"""Convert Gitabase SQLite files into a small manifest and per-chapter databases.
+
+Used by the original Pages workflow. Once the new Gitabase Reader web app is in the repo (its index.html at the
+root, or release/gitabase-reader-web.zip) this hands over to tools/build_site.py, which builds the new site
+(app files + chunked library with catalog.json) instead of the per-chapter files.
+"""
 import argparse
 import hashlib
 import json
 import os
 import re
 import sqlite3
+import sys
 import zipfile
 from pathlib import Path
 
@@ -117,10 +123,9 @@ def generate(src_path, output, name):
 def export_databases(paths, site):
     """Optional: publish zipped copies of the source databases under site/export/.
 
-    Only runs when release/export-db.txt exists; it lists the database file names to
-    export (one per line, '#' lines ignored, 'all' exports every input). Each file is
-    cut into 48 MB slices and every slice is stored in its own zip, plus parts.txt
-    with sizes and sha256 so the pieces can be joined and verified.
+    Only runs when release/export-db.txt lists database file names (one per line, '#' lines ignored,
+    'all' exports every input). Each file is cut into 48 MB slices, every slice in its own zip, plus
+    parts.txt with sizes and sha256 so the pieces can be joined and verified.
     """
     flag = Path("release/export-db.txt")
     if not flag.exists():
@@ -160,6 +165,15 @@ def main():
     ap.add_argument("--out", default="site/library")
     args = ap.parse_args()
     out = Path(args.out)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import build_site
+    except ImportError:
+        build_site = None
+    if build_site and build_site.new_app_present():
+        build_site.build(site=out.parent, dbdir=Path(args.databases[0]).parent)
+        export_databases(args.databases, out.parent)
+        return
     out.mkdir(parents=True, exist_ok=True)
     manifest = {"version": 1, "databases": []}
     names = set()
