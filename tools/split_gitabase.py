@@ -159,96 +159,6 @@ def export_databases(paths, site):
     (exp / "parts.txt").write_text("\n".join(listing) + "\n", encoding="utf-8")
     print(f"Exported {len(listing)} entries to {exp}")
 
-def _slice_zip(path, exp, listing, slice_size=48 * 1024 * 1024):
-    whole = hashlib.sha256()
-    with open(path, "rb") as f:
-        i = 0
-        while True:
-            buf = f.read(slice_size)
-            if not buf:
-                break
-            whole.update(buf)
-            zname = f"{path.stem}.part{i:02d}.zip"
-            with zipfile.ZipFile(exp / zname, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
-                z.writestr(f"{path.name}.part{i:02d}", buf)
-            listing.append(f"{zname}\t{len(buf)}\t{hashlib.sha256(buf).hexdigest()}")
-            i += 1
-    listing.append(f"{path.name}\t{path.stat().st_size}\t{whole.hexdigest()}")
-
-def _subset(src_path, out_path, code):
-    """Rows of one book (books.type == code) plus its word and reference tables, without the big text columns."""
-    if out_path.exists(): out_path.unlink()
-    dst = sqlite3.connect(out_path)
-    dst.execute("ATTACH DATABASE ? AS s", (str(src_path),))
-    tables = {r[0]: r[1] for r in dst.execute("SELECT name, sql FROM s.sqlite_master WHERE type='table' AND sql IS NOT NULL")}
-    cols = {t: [c[1] for c in dst.execute(f'PRAGMA s.table_info("{t}")')] for t in tables}
-    bcol = "type" if "type" in cols.get("books", []) else None
-    bids = [r[0] for r in dst.execute(f'SELECT _id FROM s.books WHERE "{bcol}" = ?', (code,))] if bcol else []
-    dst.execute("CREATE TABLE gbweb_ids (_id INTEGER PRIMARY KEY)")
-    if bids:
-        dst.execute(f'INSERT INTO gbweb_ids SELECT _id FROM s.textnums WHERE book_id IN ({",".join("?" * len(bids))})', bids)
-    bl = ",".join(str(int(b)) for b in bids) or "-1"
-    report = []
-    for t, sql in tables.items():
-        if t.startswith(("sqlite_", "textindex")) or "VIRTUAL" in sql.upper(): continue
-        c = cols[t]
-        try:
-            dst.execute(sql.replace(f'CREATE TABLE "{t}"', f'CREATE TABLE main."{t}"', 1) if f'CREATE TABLE "{t}"' in sql else sql)
-        except sqlite3.Error:
-            dst.execute(f'CREATE TABLE main."{t}" AS SELECT * FROM s."{t}" WHERE 0')
-        n = dst.execute(f'SELECT count(*) FROM s."{t}"').fetchone()[0]
-        if t == "books": where = ""
-        elif t == "texts": where = " WHERE _id IN (SELECT _id FROM gbweb_ids)"
-        elif "book_id" in c: where = f" WHERE book_id IN ({bl})"
-        elif "txt_id" in c: where = " WHERE txt_id IN (SELECT _id FROM gbweb_ids)"
-        elif "thisBookWeb" in c: where = " WHERE thisBookWeb = " + repr(code)
-        elif n < 3000000: where = ""
-        else: report.append(f"{t}: skipped ({n} rows)"); continue
-        if t == "texts":
-            keep = [x for x in ("_id", "transl1") if x in c]
-            dst.execute(f'INSERT INTO main.texts ({",".join(keep)}) SELECT {",".join(keep)} FROM s.texts{where}')
-        else:
-            dst.execute(f'INSERT INTO main."{t}" SELECT * FROM s."{t}"{where}')
-        cnt = dst.execute('SELECT count(*) FROM main."%s"' % t).fetchone()[0]
-        report.append(f"{t}: {cnt} of {n}")
-    dst.commit(); dst.execute("DETACH DATABASE s"); dst.execute("VACUUM"); dst.close()
-    return report
-
-def fetch_external(site):
-    """Optional: release/fetch-external.txt lists 'URL CODE' lines (a published gitabase package and a book code).
-    The package is downloaded during the build; for each database inside, the rows of book CODE plus the word and
-    reference tables are copied into a compact SQLite, published as zip slices under site/export/ (parts.txt)."""
-    flag = Path("release/fetch-external.txt")
-    if not flag.exists():
-        return
-    jobs = [l.split() for l in flag.read_text(encoding="utf-8").splitlines() if l.strip() and not l.strip().startswith("#")]
-    if not jobs:
-        return
-    import shutil, tempfile, urllib.request
-    exp = site / "export"; exp.mkdir(parents=True, exist_ok=True)
-    tmp = Path(tempfile.mkdtemp()); listing = []
-    for job in jobs:
-        url, code = job[0], (job[1] if len(job) > 1 else "SB")
-        try:
-            zpath = tmp / "package.zip"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (gitabase-reader-web build)"})
-            with urllib.request.urlopen(req, timeout=900) as r, open(zpath, "wb") as f:
-                shutil.copyfileobj(r, f)
-            with zipfile.ZipFile(zpath) as z:
-                for n in z.namelist():
-                    if not n.lower().endswith((".db", ".gitabase", ".sqlite")): continue
-                    z.extract(n, tmp); sp = tmp / n
-                    op = tmp / (re.sub(r"[^A-Za-z0-9_-]+", "_", Path(n).stem) + f"_{code}_subset.db")
-                    rep = _subset(sp, op, code); sp.unlink()
-                    listing.append("# " + n + ": " + "; ".join(rep))
-                    _slice_zip(op, exp, listing); op.unlink()
-            zpath.unlink()
-        except Exception as err:
-            listing.append(f"# {url}: failed: {err}")
-    with open(exp / "external.txt", "w", encoding="utf-8") as f:
-        f.write("\n".join(listing) + "\n")
-    print(f"External export: {len(listing)} lines")
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("databases", nargs="+")
@@ -263,7 +173,6 @@ def main():
     if build_site and build_site.new_app_present():
         build_site.build(site=out.parent, dbdir=Path(args.databases[0]).parent)
         export_databases(args.databases, out.parent)
-        fetch_external(out.parent)
         return
     out.mkdir(parents=True, exist_ok=True)
     manifest = {"version": 1, "databases": []}
@@ -277,7 +186,6 @@ def main():
     (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Created {sum(len(b['chapters']) for d in manifest['databases'] for b in d['books'])} chapter files in {out}")
     export_databases(args.databases, out.parent)
-    fetch_external(out.parent)
 
 if __name__ == "__main__":
     main()

@@ -1,40 +1,61 @@
-# Gitabase Reader
+# Gitabase Reader · web
 
-The reader opens directly from `index.html` in the offline download. Add your
-own `.db` or `.gitabase` file in the app; the file stays in your browser.
+A web recreation of **Gitabase Reader 9** for Android: same library, book, chapter and text screens, the same
+day/night themes, menus and settings, rebuilt from the APK. It reads the app's own gitabase files (`.db` /
+`.gitabase`, SQLite) and works fully offline.
 
-## Publish your own online library
+## Use it offline
+1. Unzip and double-click `index.html` (Chrome, Edge or Firefox).
+2. **L › My books › Add gitabase files**, or drop the files onto the window. Files are kept in this browser
+   (IndexedDB) and read page by page, so even 190 MB gitabases open instantly and never load whole.
+3. Notes, highlights, topics, reading list and history also stay in the browser. **Backup notes** saves a
+   `.json`; **Restore from backup** can merge or replace (replace asks you to type `gopi`, like the app).
 
-1. Enable GitHub Pages with **Settings > Pages > Build and deployment > GitHub Actions**.
-2. Install Git LFS on your computer, clone the repository and run `git lfs install`.
-3. Put your Gitabase files in `databases/`, then commit and push. The file rules
-   in `.gitattributes` make files in that folder use LFS.
-4. The "Publish reader" Actions workflow splits the files into one SQLite file
-   per chapter and deploys the site and a small catalogue to Pages. On the site,
-   choose **Online library**, then book, canto and chapter.
+## Host it (GitHub Pages)
+1. Put the gitabase files in `databases/` (Git LFS: `git lfs install`; `.gitattributes` already tracks `databases/**`).
+2. Push to `main`, and set **Settings › Pages › Source: GitHub Actions**. The workflow copies the app into `site/`
+   and runs `tools/prepare_library.py`, which adds the indexes the reader uses, VACUUMs, splits every file into
+   256 KB chunks and writes `library/catalog.json`.
+3. The hosted site loads that catalogue automatically (no manual adding there) and downloads only the chunks a
+   screen needs. Test locally: `python tools/prepare_library.py databases library && python -m http.server`.
 
-GitHub's normal repository limit is 100 MiB per file and browser uploads are
-limited to 25 MiB. Use Git LFS from your computer, not the GitHub web upload,
-for large databases. LFS and Actions have usage limits. GitHub Pages has a
-1 GB published-site limit. Do not publish content unless you have the right
-to make it public.
+## What's inside
+- Home tabs as icons: **L** library (Books / Reading / My books), **F** favourites (all / highlights / quotes /
+  texts), **Q** questions, **N** notes (to texts / general), **T** topics (#tags, `a/b` = subtopic), **D** dictionary.
+- Book screen with canto picker (All cantos), chapter cards, picture / card / diagram / fresco tabs; chapter text list.
+- Text screen: one text per page flowing across chapters; vertical or horizontal (paged, tap zones) reading;
+  "Read book from start" (Finished list); side page buttons that only scroll; chapter drawer; Sanskrit /
+  word-by-word toggles (table or classic); selection: Copy, +Highlight, +Comment, +Question, +Quote and more.
+- Verse toolbar: favourite garland, compare and translate (1 = full screen, 2 = side by side with swap,
+  Sanskrit toggle, scroll sync, full screen), references (unresolvable ones stay dimmed), notes.
+- Word links open their occurrences (dictionary tables, or the books' word-by-word translations), 40 at a time.
+- Full-text search using the index inside the gitabase (JS reader for its FTS3 tables), with exact phrase, word
+  variants (`adhikar*`), sorting and scope; switch the index off for a slower substring scan.
+- Hindi typography: per-block script detection, Tiro Devanagari Hindi for prose, Tiro Devanagari Sanskrit for
+  verse, Noto Serif Devanagari for bold, 0.94x size, roomy leading and paragraph spacing, never justified,
+  no-break space before danda and before a visarga used as a colon. Toggle: Settings › Match the book's script.
+- Keyboard: Left/Right previous/next text, PgUp/PgDn/Space scroll, Esc back.
 
-The online reader fetches its catalogue and the selected chapter, not the
-whole original database. Opening another chapter currently means picking it
-in Online library again: automatic cross-chapter fetching is not implemented.
-Each fetched chapter is stored in the browser library, and can be removed
-through Manage gitabases.
+## Publishing on GitHub Pages (github.com/dasadasanudas/gitabase-reader-web)
+The repo's Pages workflow already runs `tools/split_gitabase.py`; that script now hands over to `tools/build_site.py` as soon as
+this app is in the repo, and the site switches to it on the next push.
 
-The hosted split files currently include text, chapter metadata, FTS when
-present, and matching dictionary and image data where the schema supports it.
-Some cross-reference and auxiliary table variants cannot yet be reconstructed
-from the selected chapter and may not appear. Search on the hosted side covers
-downloaded chapters, not the entire online library. For the original complete
-database's full functionality, import the original file locally.
+One-time step (the ClickUp GitHub connection can push text files but not fonts/images, and can't edit workflow files):
+1. In the repo open the `release` folder, choose **Add file > Upload files**, drop in **this zip** as `gitabase-reader-web.zip`, commit.
+   Every deploy unpacks it; files committed at the repo root (`js/`, `css/`, `index.html` …) override what is in the zip,
+   so code updates can be pushed as plain files.
+2. Optional, recommended: open `.github/workflows/pages.yml` on GitHub, edit, and paste the `pages.yml` from this zip
+   (`.github/workflows/pages.yml`). It keeps the prepared library in the Actions cache, so updates that don't touch
+   `databases/` stop re-downloading the 212 MB database from Git LFS (free LFS bandwidth is limited).
+3. Databases: put `.db` / `.gitabase` files in `databases/` with git + LFS (web uploads stop at 25 MB).
 
-The splitter requires Python 3 with SQLite FTS3 support and no additional
-dependencies. Run locally with:
+The hosted site loads `library/catalog.json` by itself, reads only the chunks it needs, can be installed from the browser menu
+("Install app" / "Add to Home screen") and keeps everything you have opened readable offline.
 
-```sh
-python tools/split_gitabase.py databases/my-book.db --out site/library
-```
+## Desktop and mobile view
+Settings > General > Layout: **Automatic** (desktop view from 900 px wide, mobile view below), **Desktop view** (tabs, list and
+text side by side) or **Mobile view** (one screen at a time, tabs at the bottom; on a wide screen it shows as a phone-width column).
+
+## Credits
+SQLite 3.54.1 WebAssembly (public domain). Fonts: Roboto, PT Sans Narrow, Tiro Devanagari Hindi/Sanskrit,
+Noto Serif Devanagari (SIL OFL); Gaura Times, images and icons from Gitabase Reader.
