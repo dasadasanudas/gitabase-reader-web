@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Convert Gitabase SQLite files into a small manifest and per-chapter databases."""
 import argparse
+import hashlib
 import json
 import os
 import re
 import sqlite3
+import zipfile
 from pathlib import Path
 
 def table_columns(db, name):
@@ -112,6 +114,46 @@ def generate(src_path, output, name):
     src.close()
     return result
 
+def export_databases(paths, site):
+    """Optional: publish zipped copies of the source databases under site/export/.
+
+    Only runs when release/export-db.txt exists; it lists the database file names to
+    export (one per line, '#' lines ignored, 'all' exports every input). Each file is
+    cut into 48 MB slices and every slice is stored in its own zip, plus parts.txt
+    with sizes and sha256 so the pieces can be joined and verified.
+    """
+    flag = Path("release/export-db.txt")
+    if not flag.exists():
+        return
+    wanted = [l.strip() for l in flag.read_text(encoding="utf-8").splitlines()
+              if l.strip() and not l.strip().startswith("#")]
+    if not wanted:
+        return
+    exp = site / "export"
+    exp.mkdir(parents=True, exist_ok=True)
+    slice_size = 48 * 1024 * 1024
+    listing = []
+    for path in paths:
+        p = Path(path)
+        if "all" not in wanted and p.name not in wanted:
+            continue
+        whole = hashlib.sha256()
+        with open(p, "rb") as f:
+            i = 0
+            while True:
+                buf = f.read(slice_size)
+                if not buf:
+                    break
+                whole.update(buf)
+                zname = f"{p.stem}.part{i:02d}.zip"
+                with zipfile.ZipFile(exp / zname, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+                    z.writestr(f"{p.name}.part{i:02d}", buf)
+                listing.append(f"{zname}\t{len(buf)}\t{hashlib.sha256(buf).hexdigest()}")
+                i += 1
+        listing.append(f"{p.name}\t{p.stat().st_size}\t{whole.hexdigest()}")
+    (exp / "parts.txt").write_text("\n".join(listing) + "\n", encoding="utf-8")
+    print(f"Exported {len(listing)} entries to {exp}")
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("databases", nargs="+")
@@ -129,6 +171,7 @@ def main():
         manifest["databases"].append(generate(path, out, name))
     (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Created {sum(len(b['chapters']) for d in manifest['databases'] for b in d['books'])} chapter files in {out}")
+    export_databases(args.databases, out.parent)
 
 if __name__ == "__main__":
     main()
