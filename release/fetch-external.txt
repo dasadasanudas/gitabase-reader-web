@@ -1,3 +1,4 @@
-# Published gitabase packages to subset during the next Pages build: URL BOOKCODE (one per line).
-# Requested 2026-11-01: Srimad-Bhagavatam citations and word tables from the official English package.
-https://gitabase.com/dbs/gitabase_texts_eng.zip SB
+# Build-time export of reference data from a published gitabase package (see fetch_external in tools/split_gitabase.py).
+# One job per line: URL CODE [texts=all|col,col] [all=table,table] [skip=table,table] [tag=name]
+# Remove the job line (keep comments) once the export has been collected.
+https://gitabase.com/dbs/gitabase_texts_eng.zip SB texts=all all=meanings,textrefs skip=links,images,image_nums,lettersbytopic,android_metadata tag=SB_full
