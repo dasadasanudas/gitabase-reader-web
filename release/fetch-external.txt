@@ -1,0 +1,3 @@
+# Published gitabase packages to subset during the next Pages build: URL BOOKCODE (one per line).
+# Requested 2026-11-01: Srimad-Bhagavatam citations and word tables from the official English package.
+https://gitabase.com/dbs/gitabase_texts_eng.zip SB
