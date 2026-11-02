@@ -143,16 +143,17 @@
     const k = dir > 0 ? 0 : nrows.length - 1; return { ch: nc, i: k, row: nrows[k] };
   };
   // ---------- citations: resolve by web abbreviation / compare code / type; fail closed ----------
-  lib.resolveBook = function (abbr, lang) {
+  lib.resolveBook = function (abbr, lang, lang2) {
     const a = String(abbr || '').trim().toUpperCase().replace(/\.$/, ''); if (!a) return null;
     const ALIAS = { 'BG': ['BG', 'BGI', 'BGA'], 'SB': ['SB', 'SBH'], 'CC': ['CC'], 'BHAGAVAD-GITA': ['BG'], 'BG.': ['BG'] };
     const want = ALIAS[a] || [a];
     const cands = lib.books.filter(b => want.includes(b.abbr) || want.includes(b.compare) || want.includes(String(b.type).toUpperCase()));
     if (!cands.length) return null;
-    return cands.find(b => b.lang === lang) || cands.find(b => b.lang === GB.prefs.lang) || cands[0];
+    // the language being read first, then the language the link names, then the app language, then any
+    return cands.find(b => b.lang === lang) || (lang2 && cands.find(b => b.lang === lang2)) || cands.find(b => b.lang === GB.prefs.lang) || cands[0];
   };
-  lib.resolve = async function (abbr, nums, lang) {
-    const B = lib.resolveBook(abbr, lang); if (!B) return null;
+  lib.resolveIn = async function (B, nums) {
+    if (!B) return null;
     const n = nums.map(String); let song = '1', chNo, txt;
     if (B.hasSongs) { if (n.length < 3) return null; [song, chNo, txt] = n; }
     else if (n.length >= 3) { [song, chNo, txt] = n; if (!lib.findChapter(B, song, chNo)) { chNo = n[1]; txt = n[2]; song = (B.chapters[0] || {}).song; } }
@@ -162,6 +163,50 @@
     const i = lib.findTextIndex(rows, txt); if (i < 0) return null;
     return { B, ch, i };
   };
+  lib.resolve = async function (abbr, nums, lang, lang2) { return lib.resolveIn(lib.resolveBook(abbr, lang, lang2), nums); };
+  // ---------- links inside texts ----------
+  // word links  gb://pro/<letter>/<slug>, gb://<letter>/<slug>                       -> word occurrences
+  // text links  gb://pro../../../c/ch/v/<lang>  relative to the open text (a three-number label wins when it names
+  //             another canto: older converter files dropped it), gb://pro/<book>/n/n(/n), gr://<lang>/<package>/<book>/n/n(/n)
+  //             (as the English gitabases write them), /<book>/n/n(/n)
+  // dead links  .../todo/...                                                          -> fail closed
+  lib.BOOK_NAMES = { bg: 'Bhagavad-gītā', sb: 'Śrīmad-Bhāgavatam', cc: 'Śrī Caitanya-caritāmṛta', bs: 'Brahma-saṁhitā', svu: 'Śvetāśvatara Upaniṣad',
+    ku: 'Kaṭha Upaniṣad', mu: 'Muṇḍaka Upaniṣad', vp: 'Viṣṇu Purāṇa', bau: 'Bṛhad-āraṇyaka Upaniṣad', chu: 'Chāndogya Upaniṣad', ttu: 'Taittirīya Upaniṣad',
+    vs: 'Vedānta-sūtra', au: 'Aitareya Upaniṣad', gtu: 'Gopāla-tāpanī Upaniṣad', brs: 'Bhakti-rasāmṛta-sindhu', hbs: 'Hari-bhakti-sudhodaya',
+    hbv: 'Hari-bhakti-vilāsa', lb: 'Laghu-bhāgavatāmṛta', iso: 'Śrī Īśopaniṣad', noi: 'The Nectar of Instruction', nod: 'The Nectar of Devotion' };
+  const asciiDigits = s => String(s || '').replace(/[\u0966-\u096f]/g, d => String(d.charCodeAt(0) - 0x966)).replace(/[\u09e6-\u09ef]/g, d => String(d.charCodeAt(0) - 0x9e6));
+  const isNum = p => /^\d+(-\d+)?$/.test(p);
+  lib.parseLink = function (href, label, here) {
+    const h = String(href || '').trim();
+    if (!h) return { kind: 'none' };
+    if (/^(https?:|mailto:)/i.test(h)) return { kind: 'web', href: h };
+    if (/\/todo\//i.test(h)) return { kind: 'dead' };
+    let m = h.match(/^gb:\/\/pro\/?((?:\.\.\/)+)(.*)$/i);
+    if (m) {
+      const ups = (m[1].match(/\.\.\//g) || []).length, nums = m[2].split(/[/?#]/).filter(isNum);
+      let t = null;
+      if (ups >= 3 && nums.length >= 3) t = nums.slice(-3);
+      else if (ups === 2 && nums.length >= 2 && here) t = [String(here.song)].concat(nums.slice(-2));
+      else if (nums.length && here) t = [String(here.song), String(here.ch), nums[nums.length - 1]];
+      const ln = (asciiDigits(label).match(/\d+(?:\s*[-–]\s*\d+)?/g) || []).map(x => x.replace(/\s*[-–]\s*/, '-'));
+      if (ln.length === 3 && t && (ln[0] !== String(t[0]) || ln[1] !== String(t[1]))) t = ln;
+      return t ? { kind: 'text', abbr: null, nums: t } : { kind: 'unknown' };
+    }
+    m = h.match(/^gr:\/\/([a-z]{2,4})\/([a-z0-9_]+)\/([a-z0-9_]+)\/(.+)$/i);
+    if (m) { const nums = m[4].split(/[/?#]/).filter(isNum); return nums.length ? { kind: 'text', abbr: m[3].toLowerCase(), nums, lang: m[1].toLowerCase(), pkg: m[2].toLowerCase() } : { kind: 'unknown' }; }
+    m = h.match(/^gb:\/\/(?:pro\/)?(.*)$/i);
+    if (m) {
+      const parts = m[1].split(/[/?#]/).filter(Boolean);
+      if (parts.length && parts.length <= 2 && !parts.some(isNum)) return { kind: 'word', href: h };
+      const abbr = parts.find(p => /^[a-z][a-z0-9]{1,5}$/i.test(p)), nums = parts.filter(isNum);
+      if (abbr && nums.length) return { kind: 'text', abbr: abbr.toLowerCase(), nums };
+      return { kind: 'word', href: h };
+    }
+    m = h.match(/^\/?([a-z][a-z0-9]{1,5})\/(\d.*)$/i);
+    if (m) { const nums = m[2].split(/[/?#]/).filter(isNum); if (nums.length) return { kind: 'text', abbr: m[1].toLowerCase(), nums }; }
+    return { kind: 'unknown' };
+  };
+  lib.linkName = (L, B) => (L.abbr ? (lib.BOOK_NAMES[L.abbr] || L.abbr.toUpperCase()) : (B ? B.title : '')) + ' ' + (L.nums || []).join('.');
   lib.parseCite = function (s) {
     const m = String(s || '').match(/\b([A-Za-z\u00c0-\u024f.\-]{2,24})\s*\.?\s*(\d+)(?:[.:](\d+))?(?:[.:](\d+(?:-\d+)?))?/);
     if (!m) return null;
@@ -213,12 +258,12 @@
           // plain IN lists (no lower()) so the hosted files' (thisBookWeb, thisSong, thisChapter, thisTextNo) index is used
           const s = lib.eq('thisSong', ch.song), c = lib.eq('thisChapter', ch.ch), t = lib.eq('thisTextNo', row.no);
           const wa = B.webAbbrev, webs = Array.from(new Set([wa, wa.toUpperCase(), wa.charAt(0).toUpperCase() + wa.slice(1)]));
-          const rows = await q(D, 'SELECT * FROM textrefs WHERE (thisBookWeb IN (' + webs.map(() => '?').join(',') + ') OR thisBook IN (?, ?)) AND ' + s.sql + ' AND ' + c.sql + ' AND ' + t.sql + ' LIMIT 500',
+          const rows = await q(D, 'SELECT * FROM textrefs WHERE (thisBookWeb IN (' + webs.map(() => '?').join(',') + ') OR thisBook IN (?, ?)) AND ' + s.sql + ' AND ' + c.sql + ' AND ' + t.sql + ' LIMIT 3000',
             webs.concat([part.bookId, String(part.bookId)], s.bind, c.bind, t.bind));
           for (const r of rows) { const tb = lib.resolveBook(r.refbyBookWeb, B.lang); const withSong = tb ? tb.hasSongs : Number(r.refbyLevels) >= 4;
             out.push({ abbr: String(r.refbyBookWeb || '').toUpperCase(), nums: (withSong ? [r.refbySong, r.refbyChapter, r.refbyTextNo] : [r.refbyChapter, r.refbyTextNo]).filter(x => x !== null && x !== '' && x !== undefined).map(String), levels: r.refbyLevels, chapterName: r.refbyChapterName || '', text: r.refbyText || '', scroll: r.refbyScroll }); }
         } else if (has(D, 'textrefs', 'txt_id')) {
-          const res = await GBDB.lookup({ dbId: D.num, table: 'textrefs', col: 'txt_id', key: row.id, offset: 0, limit: 500, cols: '*' });
+          const res = await GBDB.lookup({ dbId: D.num, table: 'textrefs', col: 'txt_id', key: row.id, offset: 0, limit: 3000, cols: '*' });
           for (const r of res.rows) { const c2 = lib.parseCite(r.name || r.link || ''); out.push({ abbr: c2 ? c2.abbr : '', nums: c2 ? c2.nums : [], chapterName: '', text: r.name || '', link: r.link || '', refId: r.ref_id, D }); }
         }
       } catch (e) { console.warn('refs', e); }

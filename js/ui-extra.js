@@ -113,7 +113,7 @@
         let target = null;
         if (r.refId && r.D) target = await lib.locate(r.D, r.refId);
         if (!target && r.abbr && r.nums.length) target = await lib.resolve(r.abbr, r.nums, cur.B.lang);
-        if (target) { row.classList.remove('dim'); row.append(h('span.ref-go', { text: '»' })); row.onclick = () => { s.close(); GB.reader.open(target.B, target.ch, target.i, { noAsk: true }); }; }
+        if (target) { row.classList.remove('dim'); row.append(h('span.ref-go', { text: '»' })); row.onclick = () => { s.close(); const sc = Number(r.scroll); GB.reader.open(target.B, target.ch, target.i, sc > 0 && sc < 100 && !r.refId ? { noAsk: true, scroll: sc / 100 } : { noAsk: true }); }; }
       })();
     }
   };

@@ -301,12 +301,15 @@
       { label: 'Remove', icon: 'trash', onClick: async () => { await GB.notes.remove(n.id); R.rerender(); GB.refreshAll(); } }], { at: { x: e.clientX, y: e.clientY + 8 } });
   }
   async function linkClick(a) {
-    const href = a.getAttribute('href') || '';
-    if (/^gb:\/\/pro\//i.test(href) || /^gb:\/\/[a-z]\//i.test(href)) return GB.word.open(cur.ch.part.D, href, a.textContent.trim());
-    if (/^gb:\/\//i.test(href)) {
-      const parts = href.replace(/^gb:\/\//i, '').split(/[/?#]/).filter(Boolean); const abbr = parts.find(p => /^[a-z]{2,6}$/i.test(p)); const nums = parts.filter(p => /^\d+(-\d+)?$/.test(p));
-      if (abbr && nums.length) { const r = await lib.resolve(abbr, nums, cur.B.lang); if (r) return R.open(r.B, r.ch, r.i, { noAsk: true }); }
+    const href = a.getAttribute('href') || '', label = a.textContent.trim();
+    const L = lib.parseLink(href, label, { song: cur.ch.song, ch: cur.ch.ch });
+    if (L.kind === 'word') return GB.word.open(cur.ch.part.D, href, label);
+    if (L.kind === 'text') {
+      const r = L.abbr ? await lib.resolve(L.abbr, L.nums, cur.B.lang, L.lang) : await lib.resolveIn(cur.B, L.nums);
+      if (r) return R.open(r.B, r.ch, r.i, { noAsk: true });
+      GB.ui.toast(lib.linkName(L, cur.B) + ' is not in your library'); return;
     }
+    if (L.kind === 'dead') { GB.ui.toast('This link has no target in the file'); return; }
     linkFallback(href);
   }
   function linkFallback(href) {

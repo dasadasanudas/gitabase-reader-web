@@ -27,8 +27,13 @@ day/night themes, menus and settings, rebuilt from the APK. It reads the app's o
   "Read book from start" (Finished list); side page buttons that only scroll; chapter drawer; Sanskrit /
   word-by-word toggles (table or classic); selection: Copy, +Highlight, +Comment, +Question, +Quote and more.
 - Verse toolbar: favourite garland, compare and translate (1 = full screen, 2 = side by side with swap,
-  Sanskrit toggle, scroll sync, full screen), references (unresolvable ones stay dimmed), notes.
+  Sanskrit toggle, scroll sync, full screen), references (unresolvable ones stay dimmed; a reference opens the
+  citing text at the place of the citation), notes.
 - Word links open their occurrences (dictionary tables, or the books' word-by-word translations), 40 at a time.
+- Citations in a text open the cited text: verse links inside the same book (`gb://pro../../../1/3/43/hi`; when a
+  file's link drops the canto, the printed number wins), `gr://eng/texts/bg/7/14`-style links in whichever loaded
+  gitabase has that book (the language being read first, then the link's), and a short message when the book is
+  not in the library.
 - Full-text search using the index inside the gitabase (JS reader for its FTS3 tables), with exact phrase, word
   variants (`adhikar*`), sorting and scope; switch the index off for a slower substring scan.
 - Hindi typography: per-block script detection, Tiro Devanagari Hindi for prose, Tiro Devanagari Sanskrit for
@@ -46,7 +51,7 @@ One-time step (the ClickUp GitHub connection can push text files but not fonts/i
    so code updates can be pushed as plain files.
 2. Optional, recommended: open `.github/workflows/pages.yml` on GitHub, edit, and paste the `pages.yml` from this zip
    (`.github/workflows/pages.yml`). It keeps the prepared library in the Actions cache, so updates that don't touch
-   `databases/` stop re-downloading the 212 MB database from Git LFS (free LFS bandwidth is limited).
+   `databases/` stop re-downloading the 213 MB database from Git LFS (free LFS bandwidth is limited).
 3. Databases: put `.db` / `.gitabase` files in `databases/` with git + LFS (web uploads stop at 25 MB).
 
 The hosted site loads `library/catalog.json` by itself, reads only the chunks it needs, can be installed from the browser menu
