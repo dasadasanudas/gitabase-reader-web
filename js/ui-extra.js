@@ -216,6 +216,7 @@
     ['layout', 'Layout', [['auto', 'Automatic (by window width)'], ['desktop', 'Desktop view: tabs, list and text side by side'], ['mobile', 'Mobile view: one screen at a time, tabs at the bottom']], 'Desktop or mobile view on any screen'],
     ['hideStatusBar', 'Hide Android top notifications bar', 'bool', 'Full screen while reading on phones and tablets. Allows not to distract your attention during reading'],
     ['Text Screen Settings'],
+    ['fixedDirection', 'Fixed direction by book type', 'bool', 'Books of verses (Gita, Bhagavatam, Caitanya-caritamrta, anything with Sanskrit) always scroll vertically, small books always page horizontally. Off = choose per book, with the default below'],
     ['defaultLayout', 'Default Layout', [['vertical', 'Vertical scrolling'], ['horizontal', 'Horizontal scrolling']], 'How the text screen is displayed'],
     ['showSanskrit', 'Show Sanskrit', 'bool', 'Select default setting for showing or hiding sanskrit after opening Text screen'],
     ['wbwStyle', 'Word By Word display style', [['table', 'Table'], ['classic', 'Classic']], 'Style to display word by word sanskrit translation'],
@@ -266,7 +267,7 @@
         pg.body.append(h('div.pref' + (onclick ? '.click' : ''), { onclick }, h('div.pref-main', null, h('div.pref-t', { text: title }), sum ? h('div.pref-s', { text: sum }) : null, val ? h('div.pref-v', { text: val }) : null), ctl));
       }
     };
-    function change(k, v) { GB.setPref(k, v); GB.applyPrefs(); if (['night', 'showSanskrit', 'wbwStyle', 'hideDevanagari', 'matchScript', 'doubleProgress', 'topRightIcon', 'pageButtons', 'showPageNumbers', 'diacritics'].includes(k)) GB.reader.rerender(); if (k === 'night') GB.home.render(); if (k === 'layout') { if (GB.isWide()) document.body.classList.remove('reading'); GB.home.render(); window.dispatchEvent(new Event('resize')); } fill(); }
+    function change(k, v) { GB.setPref(k, v); GB.applyPrefs(); if (['night', 'showSanskrit', 'wbwStyle', 'hideDevanagari', 'matchScript', 'doubleProgress', 'topRightIcon', 'pageButtons', 'showPageNumbers', 'diacritics', 'fixedDirection'].includes(k)) GB.reader.rerender(); if (k === 'night') GB.home.render(); if (k === 'layout') { if (GB.isWide()) document.body.classList.remove('reading'); GB.home.render(); window.dispatchEvent(new Event('resize')); } fill(); }
     function choose(k, title, opts) {
       const body = h('div.choose', null, opts.map(([v, t]) => { const r = h('input', { type: 'radio', name: 'ch' + k }); r.checked = GB.prefs[k] == v; return h('label.choose-row', { onclick: () => { d.close(); change(k, v); } }, r, h('span', { text: t })); }));
       const d = GB.ui.dialog({ title, body, buttons: [{ label: 'CANCEL', value: null }] });

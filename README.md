@@ -26,6 +26,9 @@ day/night themes, menus and settings, rebuilt from the APK. It reads the app's o
 - Text screen: one text per page flowing across chapters; vertical or horizontal (paged, tap zones) reading;
   "Read book from start" (Finished list); side page buttons that only scroll; chapter drawer; Sanskrit /
   word-by-word toggles (table or classic); selection: Copy, +Highlight, +Comment, +Question, +Quote and more.
+- Reading direction is fixed by book type (Settings › Fixed direction by book type): books of verses scroll vertically, small
+  books page horizontally; switch it off to choose per book. Swipe left/right changes the text (touch, or a mouse drag on the side
+  margins) in vertical reading, and turns the page in horizontal reading.
 - Verse toolbar: favourite garland, compare and translate (1 = full screen, 2 = side by side with swap,
   Sanskrit toggle, scroll sync, full screen), references (unresolvable ones stay dimmed; a reference opens the
   citing text at the place of the citation), notes.

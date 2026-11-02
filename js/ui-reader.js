@@ -13,6 +13,8 @@
   R.current = () => cur;
   R.build = function () {
     root = $('#reader'); root.innerHTML = '';
+    // let horizontal swipes pass through the text (vertical reading) and keep touch gestures for paging (horizontal reading)
+    document.head.append(h('style', { text: '.rd-scroll{overscroll-behavior-y:contain;overscroll-behavior-x:auto;touch-action:pan-y pan-x}.rd-pager.hz .rd-scroll{touch-action:none}' }));
     emptyEl = h('div.rd-empty', null, img('splash_icon.png', 'rd-empty-img'), h('div.rd-empty-t', { text: 'Open a text from your library' }));
     head = h('header.hdr.rd-head');
     prog = h('div.rd-prog', null, h('i.p1'), h('i.p2'));
@@ -45,12 +47,12 @@
   R.close = function () { document.body.classList.remove('reading'); closeDrawer(); clearSel(); GB.screen.leave(); if (!GB.isWide()) { /* keep state for reopening */ } };
   const loading = on => { loadingEl.hidden = !on; };
   // ---------- open ----------
-  function askMode() {
+  function askMode(only) {
     return new Promise(res => {
       let settled = false;
       const sw = h('input.switch', { type: 'checkbox' });
       const opt = (m, label) => h('div.mode-opt', { onclick: () => { settled = true; d.close(m); res({ mode: m, fromStart: sw.checked }); } }, h('span.mode-ic', { html: GB.icons.svg(m) }), h('span', { text: label }));
-      const body = h('div.modes', null, opt('vertical', 'Vertical scrolling'), opt('horizontal', 'Horizontal scrolling'), h('div.mode-div'),
+      const body = h('div.modes', null, only !== 'horizontal' ? opt('vertical', 'Vertical scrolling') : null, only !== 'vertical' ? opt('horizontal', 'Horizontal scrolling') : null, h('div.mode-div'),
         h('label.mode-start', null, h('span', { text: 'Read book from start' }), sw),
         h('div.mode-hint', { text: 'Starting from the first page lets the book count as fully read when you finish, and appear in your Finished list as an achievement.' }));
       const d = GB.ui.dialog({ title: 'How would you like to read this book?', body, buttons: [{ label: 'CANCEL', value: null }], onClose: () => { if (!settled) res(null); } });
@@ -59,8 +61,9 @@
   R.open = async function (B, ch, i, opts) {
     opts = opts || {}; if (!B || !ch) return;
     let extra = null;
+    const fixed = GB.prefs.fixedDirection !== false;
     if (!GB.reading.get(B) && !opts.noAsk) {
-      const c = await askMode(); if (!c) return;
+      const c = await askMode(fixed ? (isVerseBook(B) ? 'vertical' : 'horizontal') : null); if (!c) return;
       extra = { mode: c.mode, fromStart: c.fromStart };
       if (c.fromStart) { ch = B.chapters[0]; i = 0; }
     }
@@ -72,7 +75,7 @@
       i = Math.max(0, Math.min(i || 0, rows.length - 1));
       cur = { B, ch, i, row: rows[i], rows };
       const rd = GB.reading.get(B);
-      hz = ((extra && extra.mode) || (rd && rd.mode) || GB.prefs.defaultLayout) === 'horizontal';
+      hz = fixed ? !isVerseBook(B) : ((extra && extra.mode) || (rd && rd.mode) || GB.prefs.defaultLayout) === 'horizontal';
       await renderAll(opts);
       await GB.reading.touch(B, ch, i, rows[i], rows.length, extra);
       GB.history.add(B, ch, rows[i]); setHash(); GB.chapter.markCurrent(); syncHome();
@@ -80,6 +83,7 @@
     } catch (e) { console.error(e); loading(false); GB.ui.toast(GB.errMsg(e, 'Could not open text'), 4000); }
     loading(false);
   };
+  const isVerseBook = B => !!(B.hasSongs || B.hasSanskrit || ['BG', 'SB', 'CC'].includes(B.abbr));
   R.openSaved = async function (B, e) {
     if (!B) return; const ch = lib.findChapter(B, e.song, e.ch) || B.chapters[0]; if (!ch) return;
     const rows = await lib.chapterTexts(B, ch); const i = Math.max(0, lib.findTextIndex(rows, e.no));
@@ -258,8 +262,18 @@
     el.querySelector('.rd-stage').append(hint);
   }
   let sx = null, sy = null;
-  function swipeStart(e) { if (!hz) return; sx = e.clientX; sy = e.clientY; }
-  function swipeEnd(e) { if (!hz || sx == null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null; if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5 && getSelection().isCollapsed) { swipedAt = Date.now(); pageStep(dx < 0 ? 1 : -1); } }
+  // paged reading: swipe turns the page. Vertical reading: touch swipes are native (scroll snap); with a mouse, drag on the empty side margins
+  let sTarget = null;
+  let sLeft = 0;
+  function swipeStart(e) { sTarget = e.target; sx = e.clientX; sy = e.clientY; sLeft = pager.scrollLeft; }
+  function swipeEnd(e) {
+    if (sx == null) return; const dx = e.clientX - sx, dy = e.clientY - sy; sx = null;
+    const flick = Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5;
+    if (hz) { if (flick && getSelection().isCollapsed) { swipedAt = Date.now(); pageStep(dx < 0 ? 1 : -1); } return; }
+    if (!flick || Math.abs(pager.scrollLeft - sLeft) > 8) return;            // the browser already scrolled the pager: nothing to add
+    const margin = sTarget && sTarget.classList && (sTarget.classList.contains('rd-scroll') || sTarget.classList.contains('rd-slot'));
+    if (e.pointerType !== 'mouse' || (margin && Math.abs(dx) > 100)) go(dx < 0 ? 1 : -1);
+  }
   let swipedAt = 0;
   function hzTap(e) {
     if (Date.now() - swipedAt < 400 || !getSelection().isCollapsed) return;
