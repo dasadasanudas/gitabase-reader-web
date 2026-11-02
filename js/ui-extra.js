@@ -224,7 +224,7 @@
     ['fontSize', 'Font size', 'num', 'Text screen font size, px', 10, 40],
     ['fontStep', 'Step to change font size', [[0.5, '0.5'], [1, '1'], [1.5, '1.5'], [2, '2']], 'Step to change font size used on text screen or in general note'],
     ['textAlign', 'Text alignment', [['left', 'Left'], ['justify', 'Justify'], ['center', 'Center']], 'Left/just/center. Devanagari is never justified'],
-    ['diacritics', 'Diakritics font', 'bool', 'Gaura Times with diacritics. Off = simple font'],
+    ['diacritics', 'Diakritics font', 'bool', 'Reader Serif with diacritics. Off = simple font'],
     ['matchScript', "Match the book's script", 'bool', 'Hindi prose in Tiro Devanagari Hindi, Sanskrit verse in Tiro Devanagari Sanskrit, real bold weights and roomier Devanagari spacing'],
     ['doubleProgress', 'Double reading progress under titlebar', 'bool', 'Double progress shows chapter position and volume, single progress only volume'],
     ['keepAwake', 'Keep the screen on while reading', 'bool', 'The screen does not dim or lock while a text is open'],
@@ -309,6 +309,6 @@
       h('p', null, h('b', { text: 'Gitabase Reader · web' })),
       h('p', { text: 'A web recreation of Gitabase Reader 9 for Android. It runs offline from index.html; your gitabase files, notes and reading list stay in this browser.' }),
       h('p', { text: (lib.hosted ? 'Online library: ' : 'Library: ') + f + ' file(s), ' + n + ' book(s). Notes: ' + GB.notes.list.length + '.' }),
-      h('p.small', { text: 'SQLite 3.54.1 (WebAssembly) · fonts: Gaura Times, PT Sans Narrow, Roboto, Tiro Devanagari Hindi & Sanskrit, Noto Serif Devanagari.' })), buttons: [{ label: 'OK' }] });
+      h('p.small', { text: 'SQLite 3.54.1 (WebAssembly) · fonts: Reader Serif (Noto Serif), PT Sans Narrow, Roboto, Tiro Devanagari Hindi & Sanskrit, Noto Serif Devanagari. Icons and pictures were drawn for this app.' })), buttons: [{ label: 'OK' }] });
   };
 })(window.GB);

@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#7b5549">
 <title>Gitabase Reader</title>
-<link rel="icon" href="img/ui/gitabase_reader_icon.png">
+<link rel="icon" type="image/svg+xml" href="img/app-icon.svg">
 <link rel="apple-touch-icon" href="img/icon-192.png">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/own-art.css">
 </head>
 <body>
 <div id="app">
@@ -19,10 +20,11 @@
 <div id="dropzone"><div>Drop .db / .gitabase files to add them to your library</div></div>
 <input type="file" id="fileAdd" accept=".db,.gitabase,.sqlite,.sqlite3,.gdb" multiple hidden>
 <input type="file" id="fileRestore" accept=".json,application/json" hidden>
-<div id="boot"><img src="img/ui/splash_icon.png" alt=""><div class="boot-msg">Loading…</div></div>
+<div id="boot"><img src="img/app-icon.svg" alt=""><div class="boot-msg">Loading…</div></div>
 <script src="js/sqlite-src.js"></script>
 <script src="js/db.js"></script>
 <script src="js/util.js"></script>
+<script src="js/assets.js"></script>
 <script src="js/icons.js"></script>
 <script src="js/store.js"></script>
 <script src="js/library.js"></script>
