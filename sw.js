@@ -5,7 +5,7 @@
 'use strict';
 const BUILD = '__BUILD__';                 // stamped by tools/build_site.py
 const ASSETS = [/*__ASSETS__*/];          // fonts and toolbar images, stamped by tools/build_site.py
-const SHELL = 'gb-shell-' + BUILD, STATIC = 'gb-static-v1', CHUNKS = 'gb-chunks-v1';
+const SHELL = 'gb-shell-' + BUILD, STATIC = 'gb-static-v2', CHUNKS = 'gb-chunks-v1';
 const CORE = ['./', 'index.html', 'css/app.css', 'css/own-art.css', 'manifest.webmanifest', 'js/sqlite-src.js', 'js/db.js', 'js/util.js', 'js/assets.js', 'js/icons.js',
   'js/store.js', 'js/library.js', 'js/render.js', 'js/notes.js', 'js/ui-home.js', 'js/ui-book.js', 'js/ui-reader.js', 'js/ui-extra.js', 'js/app.js'];
 
@@ -15,7 +15,7 @@ self.addEventListener('install', e => e.waitUntil((async () => {
   await self.skipWaiting();
 })()));
 self.addEventListener('activate', e => e.waitUntil((async () => {
-  for (const k of await caches.keys()) if (k.startsWith('gb-shell-') && k !== SHELL) await caches.delete(k);
+  for (const k of await caches.keys()) if ((k.startsWith('gb-shell-') && k !== SHELL) || (k.startsWith('gb-static-') && k !== STATIC)) await caches.delete(k);
   await self.clients.claim();
 })()));
 self.addEventListener('fetch', e => {

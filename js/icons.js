@@ -1,5 +1,5 @@
-/* Icon set. Home tabs use drawn icons in place of the APK's calligraphic letters (L F Q N T D);
-   the rest of the UI keeps the APK's own PNG icons. All strokes use currentColor. */
+/* Icon set for the home tabs (L F Q N T D) and the in-app glyphs; all strokes use currentColor.
+   The toolbar and menu pictures are drawn in assets.js. */
 'use strict';
 (function (GB) {
   const S = (body, vb) => '<svg viewBox="' + (vb || '0 0 32 32') + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
