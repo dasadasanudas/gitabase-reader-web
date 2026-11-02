@@ -43,6 +43,7 @@
     layout: 'auto',                 // web: auto | desktop | mobile view
     hideStatusBar: false,           // pr_hide_android_status_bar_key: full screen while reading (phones)
     keepAwake: false,               // web: keep the screen on while a text is open
+    fixedDirection: true,           // verse books scroll vertically, small books page horizontally
     defaultLayout: 'vertical',      // vertical | horizontal  (pr_default_layout_key)
     showSanskrit: true,
     wbwStyle: 'table',              // table | classic (APK default: table)
