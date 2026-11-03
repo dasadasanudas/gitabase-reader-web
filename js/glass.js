@@ -51,10 +51,10 @@
   function loadScript(src) { return new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => no(new Error('could not load ' + src)); document.head.append(s); }); }
   function wall(night) {
     const k = night ? 'night' : 'day'; if (walls[k]) return walls[k];
-    const local = location.protocol === 'file:';
-    return walls[k] = (local && !window.GB_GLASS_WALLS ? loadScript('js/glass-walls.js') : Promise.resolve()).then(() => new Promise((ok, no) => {
+    // wallpapers ship inside js/glass-walls.js (data URLs): same file online and offline, and WebGL can always read them
+    return walls[k] = (window.GB_GLASS_WALLS ? Promise.resolve() : loadScript('js/glass-walls.js')).then(() => new Promise((ok, no) => {
       const im = new Image(); im.decoding = 'async'; im.onload = () => ok(im); im.onerror = () => no(new Error('wallpaper'));
-      im.src = local ? window.GB_GLASS_WALLS[k] : 'img/glass-' + k + '.jpg'; }));
+      im.src = window.GB_GLASS_WALLS[k]; }));
   }
 
   async function start() {
