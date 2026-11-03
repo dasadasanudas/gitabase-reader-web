@@ -16,7 +16,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          ref: main
+          lfs: false
+      # Git LFS (the databases): the downloaded files are kept between runs and fetched again only after a change
+      - name: List the LFS files
+        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-ids
+      - uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-ids') }}
+      - name: Get the LFS files
+        run: git lfs pull
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -32,6 +42,49 @@ jobs:
           else
             printf "{\"version\":1,\"databases\":[]}\n" > site/library/manifest.json
           fi
+      # The preview branch at /preview/: same books (it reads the library above), its own offline cache and its own
+      # notes/settings store. If this step fails, the live site is still published.
+      - name: Build the preview (preview branch at /preview/)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin preview
+          rm -rf /tmp/pv /tmp/pvsite && mkdir -p /tmp/pv
+          git archive FETCH_HEAD index.html sw.js manifest.webmanifest css js fonts img | tar -x -C /tmp/pv
+          cd /tmp/pv
+          python - <<'PY'
+          import json, os, sys
+          from pathlib import Path
+          ws = Path(os.environ['GITHUB_WORKSPACE'])
+          sys.path.insert(0, str(ws / 'tools'))
+          import build_site
+          out = Path('/tmp/pvsite'); out.mkdir(parents=True, exist_ok=True)
+          build_site.copy_app(out)
+          # the preview reads the live site's library: same chunks, one folder up
+          cat = json.loads((ws / 'site/library/catalog.json').read_text(encoding='utf-8'))
+          for f in cat.get('files', []): f['base'] = '../' + f['base']
+          (out / 'library').mkdir(exist_ok=True)
+          (out / 'library/catalog.json').write_text(json.dumps(cat, ensure_ascii=False), encoding='utf-8')
+          # its own offline caches, so the preview and the live site never clear each other's
+          sw = out / 'sw.js'; s = sw.read_text(encoding='utf-8').replace("'gb-", "'gbp-")
+          assert "'gb-" not in s and s.count("'gbp-") >= 3, 'sw.js: cache names not found'
+          sw.write_text(s, encoding='utf-8')
+          # its own notes, bookmarks and settings, so testing never touches the live site's data
+          st = out / 'js/store.js'; s = st.read_text(encoding='utf-8')
+          assert "NAME = 'gitabase-reader-web'" in s, 'store.js: database name not found'
+          st.write_text(s.replace("NAME = 'gitabase-reader-web'", "NAME = 'gitabase-reader-web-preview'", 1), encoding='utf-8')
+          # label it: browser tab and an installed copy say Preview
+          ix = out / 'index.html'; ix.write_text(ix.read_text(encoding='utf-8').replace('<title>', '<title>Preview · ', 1), encoding='utf-8')
+          mf = out / 'manifest.webmanifest'; m = json.loads(mf.read_text(encoding='utf-8'))
+          m['name'] = m.get('name', 'Gitabase Reader') + ' (preview)'; m['short_name'] = 'Preview'
+          mf.write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding='utf-8')
+          build_site.stamp_sw(out)
+          print('preview ready:', sorted(p.name for p in out.iterdir()))
+          PY
+          rm -rf "$GITHUB_WORKSPACE/site/preview"
+          mv /tmp/pvsite "$GITHUB_WORKSPACE/site/preview"
+          echo "preview built from $(git -C "$GITHUB_WORKSPACE" rev-parse --short FETCH_HEAD)"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
