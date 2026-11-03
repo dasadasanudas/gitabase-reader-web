@@ -210,44 +210,38 @@
   };
   // ================= settings =================
   const SET = [
-    ['General'],
-    ['openHistoryOnLaunch', 'Open history on start', 'bool', 'Show your recent texts when the app opens'],
+    ['Appearance'],
     ['night', 'Night theme', 'bool', ''],
+    ['accent', 'Accent', 'accent', ''],
     ['layout', 'Screen layout', [['auto', 'Automatic (by window width)'], ['desktop', 'Side by side: tabs, list and text'], ['mobile', 'One screen at a time, tabs at the bottom']], 'Works on any screen size'],
-    ['hideStatusBar', 'Full screen while reading', 'bool', 'Hides the system bars on phones and tablets'],
+    ['fontSize', 'Text size', 'num', 'In pixels', 10, 40],
+    ['textAlign', 'Alignment', [['left', 'Left'], ['justify', 'Justified'], ['center', 'Centred']], 'Devanagari is never justified'],
     ['Reading'],
-    ['fixedDirection', 'Direction by book type', 'bool', 'Books of verses (Gita, Bhagavatam, Caitanya-caritamrta, anything with Sanskrit) always scroll vertically, small books always page horizontally. Off = choose per book, with the default below'],
-    ['defaultLayout', 'Default direction', [['vertical', 'Vertical scrolling'], ['horizontal', 'Horizontal pages']], 'Used when direction by book type is off'],
-    ['showSanskrit', 'Show Sanskrit', 'bool', 'Sanskrit verse is visible when a text opens'],
+    ['readMode', 'Reading mode', [['verse', 'Verse by verse'], ['cont', 'Continuous (verses and chapters run on)']], 'Books of verses. Small books always turn pages'],
+    ['!parts', 'What to show', 'act', 'Sanskrit, transliteration, word for word, translation, purport: Aa in the reader, per mode'],
+    ['second', 'Second language', 'bool', 'The same verse from another language edition in your library'],
+    ['secondLayout', 'Second language layout', [['stack', 'Stacked'], ['side', 'Side by side (wide screens)']], 'Phones always stack'],
     ['wbwStyle', 'Word-for-word style', [['table', 'Table'], ['classic', 'Running text']], 'How the word-for-word meanings are laid out'],
     ['hideDevanagari', 'Hide Devanagari', 'bool', 'Keep only the transliteration of the verse'],
-    ['fontSize', 'Text size', 'num', 'In pixels', 10, 40],
-    ['fontStep', 'Text size step', [[0.5, '0.5'], [1, '1'], [1.5, '1.5'], [2, '2']], 'How much Larger text and Smaller text change the size'],
-    ['textAlign', 'Alignment', [['left', 'Left'], ['justify', 'Justified'], ['center', 'Centred']], 'Devanagari is never justified'],
-    ['diacritics', 'Diacritics font', 'bool', 'Gaura Times with full diacritics. Off = plain font'],
-    ['matchScript', 'Script-aware type', 'bool', 'Hindi prose in Tiro Devanagari Hindi, Sanskrit verse in Tiro Devanagari Sanskrit, real bold weights and roomier Devanagari spacing'],
     ['doubleProgress', 'Two progress bars', 'bool', 'Chapter and book progress under the title bar. Off = book only'],
     ['keepAwake', 'Keep the screen on', 'bool', 'The screen does not dim or lock while a text is open'],
-    ['topRightIcon', 'Top-right button', [['history', 'History'], ['bookmark', 'Set bookmark']], 'Shortcut on the reading screen'],
+    ['hideStatusBar', 'Full screen while reading', 'bool', 'Hides the system bars on phones and tablets'],
+    ['openHistoryOnLaunch', 'Open history on start', 'bool', 'Show your recent texts when the app opens'],
     ['Chapter list'],
     ['chNotesIcons', 'Note markers', 'bool', 'Small icons for favourites, highlights, notes and questions'],
     ['chFullVerseNo', 'Full verse numbers', 'bool', 'Include the chapter number'],
-    ['chSeqNo', 'Running number and page', 'bool', 'Position of the verse in the book and the approximate page of the printed edition'],
-    ['Book page'],
-    ['hideImageTabs', 'Hide picture tabs', 'bool', 'Pictures, cards, diagrams and frescoes'],
     ['chapters2col', 'Chapters in two columns', 'bool', ''],
     ['Reading time'],
     ['readHours', 'Hours you read in three days', 'num', 'Used for the time-left estimate', 1, 72],
     ['readSpeed', 'Reading speed', 'num', 'Hundreds of characters per minute', 1, 60],
-    ['Page buttons'],
-    ['pageButtons', 'Show page buttons', 'bool', 'Up, hide and down at the right edge. They only scroll the text'],
-    ['pageButtonsCrossChapters', 'Page buttons cross texts', 'bool', 'At the start or end of a text, go on to the previous or next one'],
-    ['crossButton', 'Middle button', [['hide', 'Hide the page buttons'], ['close', 'Close the text']], ''],
-    ['showPageNumbers', 'Page counter', 'bool', 'Current page and total pages in the chapter'],
-    ['Search'],
+    ['Advanced'],
+    ['!order', 'Verse order', 'act', 'Reorder the parts of a verse and switch each one on or off'],
+    ['fontStep', 'Text size step', [[0.5, '0.5'], [1, '1'], [1.5, '1.5'], [2, '2']], 'How much Larger text and Smaller text change the size'],
+    ['diacritics', 'Diacritics font', 'bool', 'Gaura Times with full diacritics. Off = plain font'],
+    ['matchScript', 'Script-aware type', 'bool', 'Hindi prose in Tiro Devanagari Hindi, Sanskrit verse in Tiro Devanagari Sanskrit, real bold weights and roomier Devanagari spacing'],
     ['useIndex', 'Use the search index', 'bool', 'Fast full-text search with the index inside the book file. Off = slower scan that also finds parts of words'],
     ['Notes and files'],
-    ['!backup', 'Back up notes', 'act', 'Save notes, topics, reading list and history as a .json file'],
+    ['!backup', 'Back up notes', 'act', 'Save notes, folders, reading list and history as a .json file'],
     ['!restore', 'Restore notes', 'act', 'Merge or replace notes from a .json backup'],
     ['!library', 'Book files', 'act', 'Add or remove book files'],
     ['!about', 'About', 'act', '']];
@@ -262,12 +256,13 @@
         const P = GB.prefs; let ctl = null, val = null, onclick = null;
         if (type === 'bool') { ctl = h('span.sw' + (P[k] ? '.on' : '')); onclick = () => change(k, !P[k]); }
         else if (type === 'num') { ctl = h('span.num', null, h('button.num-b', { text: '−', onclick: e => { e.stopPropagation(); change(k, Math.max(min, +P[k] - 1)); } }), h('b', { text: String(P[k]) }), h('button.num-b', { text: '+', onclick: e => { e.stopPropagation(); change(k, Math.min(max, +P[k] + 1)); } })); }
-        else if (type === 'act') { onclick = () => ({ '!backup': () => GB.notes.backup(), '!restore': () => GB.restoreUI(), '!library': () => { GB.home.sub = 'mine'; L.home('L'); }, '!about': GB.about })[k](); }
+        else if (type === 'act') { onclick = () => ({ '!backup': () => GB.notes.backup(), '!restore': () => GB.restoreUI(), '!library': () => { GB.home.sub = 'mine'; L.home('L'); }, '!about': GB.about, '!order': () => GB.verseOrderPage(), '!parts': () => GB.readPanel() })[k](); }
+        else if (type === 'accent') { const A = GB.ACCENTS[P.accent] || GB.ACCENTS.tulasi; val = A.name; ctl = h('span.adot.on.mini', { style: { '--c': A.day, '--cn': A.night } }); onclick = () => choose(k, title, Object.values(GB.ACCENTS).map(x => [x.key, x.name])); }
         else { const cur = type.find(o => o[0] == P[k]); val = cur ? cur[1] : String(P[k]); onclick = () => choose(k, title, type); }
         pg.body.append(h('div.pref' + (onclick ? '.click' : ''), { onclick }, h('div.pref-main', null, h('div.pref-t', { text: title }), sum ? h('div.pref-s', { text: sum }) : null, val ? h('div.pref-v', { text: val }) : null), ctl));
       }
     };
-    function change(k, v) { GB.setPref(k, v); GB.applyPrefs(); if (['night', 'showSanskrit', 'wbwStyle', 'hideDevanagari', 'matchScript', 'doubleProgress', 'topRightIcon', 'pageButtons', 'showPageNumbers', 'diacritics', 'fixedDirection'].includes(k)) GB.reader.rerender(); if (k === 'night') GB.home.render(); if (k === 'layout') { if (GB.isWide()) document.body.classList.remove('reading'); GB.home.render(); window.dispatchEvent(new Event('resize')); } fill(); }
+    function change(k, v) { GB.setPref(k, v); GB.applyPrefs(); if (k === 'readMode') GB.reader.setMode(v); else if (['night', 'accent', 'second', 'secondLayout', 'wbwStyle', 'hideDevanagari', 'matchScript', 'doubleProgress', 'diacritics'].includes(k)) GB.reader.rerender(); if (k === 'accent') { GB.home.render(); GB.refreshAll(); } if (k === 'night') GB.home.render(); if (k === 'layout') { if (GB.isWide()) document.body.classList.remove('reading'); GB.home.render(); window.dispatchEvent(new Event('resize')); } fill(); }
     function choose(k, title, opts) {
       const body = h('div.choose', null, opts.map(([v, t]) => { const r = h('input', { type: 'radio', name: 'ch' + k }); r.checked = GB.prefs[k] == v; return h('label.choose-row', { onclick: () => { d.close(); change(k, v); } }, r, h('span', { text: t })); }));
       const d = GB.ui.dialog({ title, body, buttons: [{ label: 'Cancel', value: null }] });

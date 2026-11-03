@@ -31,9 +31,11 @@
   function bookMenu(anchor, B, st, pg) {
     const rd = GB.reading.get(B);
     GB.ui.menu(anchor, [
-      rd ? { label: 'Go to bookmark', icon: 'ic_bookmark_open.png', onClick: () => GB.reader.openSaved(B, rd) } : null,
+      rd ? { label: 'Continue reading', icon: 'ic_bookmark_open.png', onClick: () => GB.reader.openSaved(B, rd) } : null,
+      { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({ B }) },
+      GB.offline && GB.offline.can(B) ? { label: GB.offline.has(B) ? 'Saved for offline ✓' : 'Save for offline', icon: 'download', onClick: () => GB.offline.download(B) } : null,
       rd ? { label: 'Clear bookmark', icon: 'ic_remove_bookmark.png', onClick: async () => { await GB.reading.remove(B.key); pg.refresh(); } } : null,
-      { label: GB.prefs.showSanskrit ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.setPref('showSanskrit', !GB.prefs.showSanskrit); GB.reader.rerender(); } },
+      { label: GB.parts.sanskritOn() ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.parts.toggleSanskrit(); GB.reader.rerender(); } },
       { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
       { label: 'Random text', icon: 'ic_random_text_o.png', onClick: async () => { const ch = B.chapters[Math.floor(Math.random() * B.chapters.length)]; const rows = await lib.chapterTexts(B, ch); GB.reader.open(B, ch, Math.floor(Math.random() * rows.length)); } },
       { label: 'All notes in this book', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
@@ -43,7 +45,7 @@
   }
   function render(pg, B, st, tabs) {
     tabs.innerHTML = '';
-    const kinds = GB.prefs.hideImageTabs ? [] : Object.keys(B.imgKinds).sort();
+    const kinds = [];   // v2: the gitabases carry no pictures; picture tabs removed
     if (kinds.length) {
       const all = [['contents', 'contents']].concat(kinds.map(k => ['k' + k, lib.KIND_TABS[k] || 'pictures']));
       for (const [k, t] of all) tabs.append(h('button.btab' + (st.tab === k ? '.on' : ''), { text: t, onclick: () => { st.tab = k; render(pg, B, st, tabs); } }));
@@ -141,9 +143,9 @@
       rows.forEach((r, i) => {
         const isCur = cur && cur.B === B && cur.ch === ch && cur.i === i;
         const num = Number(ch.ch) === 0 ? r.no : (GB.prefs.chFullVerseNo ? lib.label(B, ch.song, ch.ch, r.no).split(' ').pop() : 'TEXT ' + r.no);
-        const seq = GB.prefs.chSeqNo && r.seq ? '#' + r.seq + (r.offset ? ' · p.' + (Math.floor(r.offset / PAGE_CHARS) + 1) : '') : '';
+        const seq = '';
         pg.body.append(h('div.txrow' + (isCur ? '.cur' : ''), { 'data-i': i, onclick: () => GB.reader.open(B, ch, i) },
-          h('div.tx-top', null, h('span.tx-num', { text: num }), noteIcons(GB.notes.forText(B, ch, r)), r.images ? img('ic_images.png', 'tx-img') : null, seq ? h('span.tx-seq', { text: seq }) : null),
+          h('div.tx-top', null, h('span.tx-num', { text: num }), noteIcons(GB.notes.forText(B, ch, r)), seq ? h('span.tx-seq', { text: seq }) : null),
           h('div.tx-prev' + devCls(r.preview), { text: GB.ut(r.preview) })));
       });
       if (!rows.length) pg.body.append(h('div.help-row', { text: 'This chapter has no texts.' }));
@@ -167,7 +169,8 @@
       { label: 'History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() },
       { label: 'Go to bookmark', icon: 'ic_bookmark_open.png', onClick: () => { const rd = GB.reading.get(B); if (rd) GB.reader.openSaved(B, rd); else GB.ui.toast('No bookmark in this book yet'); } },
       { label: 'Library', icon: 'ic_menu_books.png', onClick: () => L.home('L') },
-      { label: GB.prefs.showSanskrit ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.setPref('showSanskrit', !GB.prefs.showSanskrit); GB.reader.rerender(); } },
+      { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({ B, ch }) },
+      { label: GB.parts.sanskritOn() ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.parts.toggleSanskrit(); GB.reader.rerender(); } },
       { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
       { label: 'All notes in this book', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
       { label: 'Settings', icon: 'ic_mmenu_settings.png', onClick: () => GB.settingsPage() },

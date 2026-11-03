@@ -53,10 +53,10 @@
     doubleProgress: false,
     topRightIcon: 'history',        // history | bookmark
     developer: false,
-    chNotesIcons: true, chFullVerseNo: true, chSeqNo: true, chCompareSigns: false,
-    hideImageTabs: false, chapters2col: true,
+    chNotesIcons: true, chFullVerseNo: true, chSeqNo: false, chCompareSigns: false,
+    hideImageTabs: true, chapters2col: true,
     readHours: 1, readSpeed: 10,    // hours per 3 days ; chars/min x100
-    pageButtons: true,              // right-side up / close / down buttons
+    pageButtons: false,             // v2: page buttons removed (edge arrows, swipe and keys remain)
     pageButtonsCrossChapters: false,// PgUp/PgDn may open prev/next text (default No: they only scroll)
     crossButton: 'hide',            // hide | close  (what the middle button does)
     showPageNumbers: false,
@@ -64,12 +64,24 @@
     matchScript: true,              // Hindi typography: per-block script detection & matching fonts
     diacritics: true,               // Diakritics vs Simple font
     notesFont: 16,
+    // v2 reading: mode, parts shown per mode, custom part order, second language, accent
+    readMode: 'verse',              // verse (one verse per page) | cont (verses flow, chapters run on)
+    show: { verse: { skt: true, translit: true, wbw: true, tr: true, pp: true }, cont: { skt: false, translit: false, wbw: false, tr: true, pp: false } },
+    customOrder: false, order: ['skt', 'translit', 'wbw', 'tr', 'pp'],
+    second: false, secondLayout: 'stack', secondBook: '',
+    accent: 'tulasi',
     lang: '', content: 'texts', fileFilter: '', picCols: 4, picChapters: true, picNumbers: false, picOpen: 'slide'
   };
   const prefs = Object.assign({}, DEF);
   GB.prefs = prefs;
   GB.prefsDefault = DEF;
-  GB.loadPrefs = async () => { Object.assign(prefs, await store.kvGet('prefs', {})); return prefs; };
+  GB.loadPrefs = async () => {
+    const saved = await store.kvGet('prefs', {}); Object.assign(prefs, saved);
+    // v2 defaults win over old saved values of removed features
+    prefs.hideImageTabs = true; prefs.pageButtons = false; prefs.chSeqNo = false; prefs.fixedDirection = true; prefs.v2 = 1;
+    prefs.show = { verse: Object.assign({}, DEF.show.verse, (saved.show || {}).verse), cont: Object.assign({}, DEF.show.cont, (saved.show || {}).cont) };
+    if (!Array.isArray(prefs.order) || prefs.order.length !== 5) prefs.order = DEF.order.slice();
+    return prefs; };
   GB.savePrefs = GB.debounce(() => store.kvSet('prefs', Object.assign({}, prefs)), 150);
   GB.setPref = (k, v) => { prefs[k] = v; GB.savePrefs(); document.dispatchEvent(new CustomEvent('gb:pref', { detail: { k, v } })); };
 })(window.GB);
