@@ -51,7 +51,7 @@ jobs:
           set -euo pipefail
           git fetch --no-tags --depth=1 origin preview
           rm -rf /tmp/pv /tmp/pvsite && mkdir -p /tmp/pv
-          git archive FETCH_HEAD index.html sw.js manifest.webmanifest css js fonts img | tar -x -C /tmp/pv
+          git archive FETCH_HEAD index.html sw.js manifest.webmanifest css js fonts img tools | tar -x -C /tmp/pv
           cd /tmp/pv
           python - <<'PY'
           import json, os, sys
@@ -65,6 +65,24 @@ jobs:
           cat = json.loads((ws / 'site/library/catalog.json').read_text(encoding='utf-8'))
           for f in cat.get('files', []): f['base'] = '../' + f['base']
           (out / 'library').mkdir(exist_ok=True)
+          # preview-only books: the English Bhagavatam, built from the BBT text source (github.com/iskconpress/books)
+          # with Devanagari for cantos 5-10 taken from the Hindi file. A failure here only leaves it out.
+          builder = Path('/tmp/pv/tools/build_sb_eng.py')
+          if builder.exists():
+              import subprocess
+              try:
+                  bbt = Path('/tmp/bbt'); eng = Path('/tmp/pveng'); eng.mkdir(exist_ok=True)
+                  if not bbt.exists():
+                      subprocess.run(['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', 'https://github.com/iskconpress/books', str(bbt)], check=True)
+                      subprocess.run(['git', '-C', str(bbt), 'sparse-checkout', 'set', 'sb'], check=True)
+                  dbs = [str(p) for p in sorted((ws / 'databases').rglob('*')) if p.suffix.lower() in ('.db', '.gitabase', '.sqlite')]
+                  subprocess.run([sys.executable, str(builder), str(bbt), str(eng / 'sb_eng.db')] + dbs, check=True)
+                  subprocess.run([sys.executable, str(ws / 'tools/prepare_library.py'), str(eng), str(out / 'library')], check=True)
+                  extra = json.loads((out / 'library/catalog.json').read_text(encoding='utf-8')).get('files', [])
+                  cat['files'] = cat.get('files', []) + extra
+                  print('preview extra books:', [f['name'] for f in extra])
+              except Exception as err:
+                  print('preview extra books skipped:', err)
           (out / 'library/catalog.json').write_text(json.dumps(cat, ensure_ascii=False), encoding='utf-8')
           # its own offline caches, so the preview and the live site never clear each other's
           sw = out / 'sw.js'; s = sw.read_text(encoding='utf-8').replace("'gb-", "'gbp-")
