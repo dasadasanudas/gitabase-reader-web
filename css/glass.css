@@ -4,8 +4,8 @@
 #glassFx { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; display: none; }
 html.glass #glassFx { display: block; }
 html.glass #glassFx[hidden] { display: none; }
-html.glass body { background: #26453e url(../img/glass-day.jpg) center / cover no-repeat fixed; }
-html.glass body.night { background: #0b1416 url(../img/glass-night.jpg) center / cover no-repeat fixed; }
+html.glass body { background: linear-gradient(120deg, #2f6b5c, #8fcfc4 45%, #f1d79a 75%, #f2b9c4); }
+html.glass body.night { background: linear-gradient(120deg, #0d2220, #1e2c4a 50%, #6b5a36 80%, #2a1f2a); }
 html.glass #app { z-index: 1; background: transparent; }
 
 /* colours on light glass (day) and dark glass (night) */
