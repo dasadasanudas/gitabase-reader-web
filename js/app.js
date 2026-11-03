@@ -23,7 +23,7 @@
       await GB.loadPrefs(); GB.applyPrefs();
       GB.home.build(); GB.reader.build(); GB.nav.init();
       msg.textContent = 'Opening library…';
-      await Promise.all([GB.notes.load(), GB.reading.load(), GB.history.load()]);
+      await Promise.all([GB.notes.load(), GB.reading.load(), GB.history.load(), GB.offline.load()]);
       GB.reader.wbwHidden = await GB.store.kvGet('wbwHidden', false);
       await GB.lib.boot();
       document.body.classList.toggle('hosted', GB.lib.hosted);

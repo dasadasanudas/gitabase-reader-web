@@ -5,8 +5,8 @@
 (function (GB) {
   const night = () => !!(GB.prefs && GB.prefs.night);
   // inks: one colour, or [light theme, dark theme]
-  const C = { or: ['#1c6b58', '#e2c47e'], hd: '#e2c47e', star: '#e0a526', green: '#6f9a3a', blue: '#4f84ad', red: '#b83a32', yellow: '#e8bd3a', folder: '#c9a14a', cream: '#efe8d6', white: '#ffffff',
-    tx: ['#1d5546', '#d8b35e'], mut: ['#7b8580', '#8e9a92'], ink: ['#22423a', '#e2c47e'], rib: ['#c18b2f', '#d8b35e'] };
+  const C = { or: ['ACC', 'ACCN'], hd: '#e2c47e', star: '#e0a526', green: '#6f9a3a', blue: '#4f84ad', red: '#b83a32', yellow: '#e8bd3a', folder: '#c9a14a', cream: '#efe8d6', white: '#ffffff',
+    tx: ['ACC', 'ACCN'], mut: ['#7b8580', '#8e9a92'], ink: ['#22423a', '#e2c47e'], rib: ['#c18b2f', '#d8b35e'] };
   const ray = (n, r1, r2, cx, cy, a0) => { let d = ''; for (let i = 0; i < n; i++) { const a = (a0 || 0) + i * 2 * Math.PI / n, c = Math.cos(a), s = Math.sin(a); d += 'M' + (cx + r1 * c).toFixed(2) + ' ' + (cy + r1 * s).toFixed(2) + 'L' + (cx + r2 * c).toFixed(2) + ' ' + (cy + r2 * s).toFixed(2); } return d; };
   // ---- stroke glyphs on a 24 grid; '@' is replaced by the ink ----
   const G = {
@@ -110,8 +110,9 @@
   const cache = new Map();
   function build(spec, th) {
     if (spec[0].slice(0, 4) === 'doc:') return DOC[spec[0].slice(4)](th);
-    const ink = Array.isArray(spec[1]) ? spec[1][th === 'dark' ? 1 : 0] : spec[1];
-    return svg('0 0 24 24', G[spec[0]].replace(/@/g, ink), ' fill="none" stroke="' + ink + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"');
+    let ink = Array.isArray(spec[1]) ? spec[1][th === 'dark' ? 1 : 0] : spec[1];
+    if (ink === 'ACC' || ink === 'ACCN') ink = GB.accentInk(ink === 'ACCN');
+    return svg('0 0 24 24', G[spec[0]].replace(/@/g, ink), ' fill="none" stroke="' + ink + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"');
   }
   GB.asset = function (url) {
     const m = /^(?:\.\/)?img\/(?:ui|tb)\/([A-Za-z0-9_]+)\.(?:png|jpg|svg)$/.exec(String(url)); if (!m) return url;
@@ -119,7 +120,7 @@
     const s = /_(o|d|dark)$/.exec(base);
     if (s) { theme = s[1] === 'o' ? 'light' : 'dark'; base = base.slice(0, -s[0].length); }
     const spec0 = M[base] || M[m[1]]; const spec = spec0 && hdr && spec0[0].slice(0, 4) !== 'doc:' ? [spec0[0], C.hd] : spec0; if (!spec) { console.warn('no artwork for', url); return url; }
-    const th = theme || (night() ? 'dark' : 'light'), key = m[1] + '|' + th;
+    const th = theme || (night() ? 'dark' : 'light'), key = m[1] + '|' + th + '|' + ((GB.prefs && GB.prefs.accent) || '');
     let out = cache.get(key);
     if (!out) { out = 'data:image/svg+xml,' + encodeURIComponent(build(spec, th)); cache.set(key, out); }
     return out;
@@ -130,7 +131,20 @@
   GB.loader = function (cls) { const d = document.createElement('div'); d.className = 'gb-loader' + (cls ? ' ' + cls : ''); d.setAttribute('role', 'status'); d.setAttribute('aria-label', 'Loading'); d.innerHTML = LOADER; return d; };
   // placeholder rows while a chapter's texts load
   GB.skeletonRows = function (n) { const f = document.createElement('div'); f.className = 'sk-list'; for (let i = 0; i < (n || 8); i++) f.insertAdjacentHTML('beforeend', '<div class="sk-row"><i class="sk-a"></i><i class="sk-b"></i><i class="sk-c"></i></div>'); return f; };
-  GB.artwork = { names: () => Object.keys(M), svg: (name, th) => { const sp = M[name]; return sp ? build(sp, th || 'light') : ''; }, doc: DOC };
+  GB.artwork = { names: () => Object.keys(M), svg: (name, th) => { const sp = M[name]; return sp ? build(sp, th || 'light') : ''; }, doc: DOC,
+    glyph: name => G[name] ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + G[name].replace(/@/g, 'currentColor') + '</svg>' : '' };
+  // accents: [day ink, night ink, title bar day, title bar night]
+  GB.ACCENTS = {
+    tulasi: { name: 'Tulasi', day: '#1c6b58', night: '#82c5ae', hdr: '#22423a', hdrN: '#111a1d' },
+    saffron: { name: 'Saffron', day: '#b8621d', night: '#e6a565', hdr: '#4a2d17', hdrN: '#1a1410' },
+    yamuna: { name: 'Yamuna', day: '#1f6f80', night: '#7cc3d1', hdr: '#173a44', hdrN: '#0f181b' },
+    indigo: { name: 'Indigo', day: '#43489a', night: '#a3a8e6', hdr: '#262a55', hdrN: '#12131d' },
+    lotus: { name: 'Lotus', day: '#a8436a', night: '#e59ab8', hdr: '#4d2033', hdrN: '#1a1115' },
+    gold: { name: 'Gold', day: '#8f6f1f', night: '#e2c47e', hdr: '#3f3519', hdrN: '#16140e' }
+  };
+  GB.accentInk = nightInk => { const a = GB.ACCENTS[(GB.prefs && GB.prefs.accent) || 'tulasi'] || GB.ACCENTS.tulasi; return nightInk ? (a.key === 'tulasi' ? '#e2c47e' : a.night) : a.day; };
+  for (const k in GB.ACCENTS) GB.ACCENTS[k].key = k;
+  GB.artwork.clear = () => cache.clear();
   // every <img> asks for the app's old names; answer with the drawings
   const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
   Object.defineProperty(HTMLImageElement.prototype, 'src', { configurable: true, enumerable: d.enumerable, get: d.get, set(v) { d.set.call(this, GB.asset(v)); } });
