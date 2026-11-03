@@ -69,7 +69,7 @@
     show: { verse: { skt: true, translit: true, wbw: true, tr: true, pp: true }, cont: { skt: false, translit: false, wbw: false, tr: true, pp: false } },
     customOrder: false, order: ['skt', 'translit', 'wbw', 'tr', 'pp'],
     second: false, secondLayout: 'stack', secondBook: '',
-    accent: 'tulasi',
+    accent: 'glass', accentPicked: false,   // Glass is the default look; devices that can't run it use Tulasi green
     lang: '', content: 'texts', fileFilter: '', picCols: 4, picChapters: true, picNumbers: false, picOpen: 'slide'
   };
   const prefs = Object.assign({}, DEF);
@@ -81,6 +81,7 @@
     prefs.hideImageTabs = true; prefs.pageButtons = false; prefs.chSeqNo = false; prefs.fixedDirection = true; prefs.v2 = 1;
     prefs.show = { verse: Object.assign({}, DEF.show.verse, (saved.show || {}).verse), cont: Object.assign({}, DEF.show.cont, (saved.show || {}).cont) };
     if (!Array.isArray(prefs.order) || prefs.order.length !== 5) prefs.order = DEF.order.slice();
+    if (!prefs.accentPicked && (!prefs.accent || prefs.accent === 'tulasi')) prefs.accent = 'glass';   // nobody picked a colour yet: Glass
     return prefs; };
   GB.savePrefs = GB.debounce(() => store.kvSet('prefs', Object.assign({}, prefs)), 150);
   GB.setPref = (k, v) => { prefs[k] = v; GB.savePrefs(); document.dispatchEvent(new CustomEvent('gb:pref', { detail: { k, v } })); };

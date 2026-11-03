@@ -26,8 +26,9 @@
     if (GB.artwork && GB.artwork.clear) GB.artwork.clear();
   };
   GB.setAccent = function (k) { GB.setPref('accent', k); GB.applyAccent(); GB.home.render(); GB.reader.rerender(); GB.refreshAll(); };
-  const accentDots = () => h('div.accents', null, Object.values(GB.ACCENTS).map(A => h('button.adot' + (GB.prefs.accent === A.key ? '.on' : ''), { type: 'button', title: A.name, 'aria-label': A.name, style: { '--c': A.day, '--cn': A.night }, onclick: () => { GB.setAccent(A.key); redrawPanel(); } })),
-    h('button.adot.glass', { type: 'button', title: 'Glass (coming soon)', 'aria-label': 'Glass, coming soon', disabled: true }));
+  const accentDots = () => h('div.accents', null, Object.values(GB.ACCENTS).map(A => h('button.adot' + (GB.prefs.accent === A.key || (A.key === 'tulasi' && GB.prefs.accent === 'glass' && !(GB.glass && GB.glass.active())) ? '.on' : ''), { type: 'button', title: A.name, 'aria-label': A.name, style: { '--c': A.day, '--cn': A.night }, onclick: () => { GB.setAccent(A.key); redrawPanel(); } })),
+    (() => { const ok = GB.glass && GB.glass.check().ok, t = ok ? 'Glass' : 'Glass: ' + (GB.glass ? GB.glass.reason() : 'not available');
+      return h('button.adot.glass' + (GB.prefs.accent === 'glass' && ok ? '.on' : ''), { type: 'button', title: t, 'aria-label': t, disabled: !ok, onclick: () => { GB.setAccent('glass'); redrawPanel(); } }); })());
 
   // ================= reading panel (Aa) =================
   let panel = null;

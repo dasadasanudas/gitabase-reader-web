@@ -101,12 +101,27 @@
     const t = await getText(pos.ch.part.D, pos.row.id);
     if (!t) { const v = h('div.verse', null, h('p', { text: 'Text not found.' })); posOf.set(v, pos); return v; }
     const notes = GB.notes.forText(B, pos.ch, pos.row); const B2 = secondBook(B);
-    const second = B2 && GB.prefs.second ? await secondText(B2, pos).catch(() => null) : null;
-    const v = GB.render.verse(t, { B, ch: pos.ch, row: pos.row, label: lib.label(B, pos.ch.song, pos.ch.ch, pos.row.no), wbwHidden: R.wbwHidden, notes, needles: o.needles || null,
-      fav: notes.some(n => n.type === 'fav'), noteCount: notes.filter(n => n.type === 'note' || n.type === 'quest').length, canSecond: !!B2, second, mode: o.mode });
+    // second language: wait briefly; if that edition is still loading (first use pulls its index), show this verse now and add the second one when it lands
+    const sp = B2 && GB.prefs.second ? secondText(B2, pos).catch(() => null) : null;
+    const LATE = {}; let second = sp ? await Promise.race([sp, new Promise(r => setTimeout(() => r(LATE), 250))]) : null;
+    const late = second === LATE; if (late) second = null;
+    const make = sec => GB.render.verse(t, { B, ch: pos.ch, row: pos.row, label: lib.label(B, pos.ch.song, pos.ch.ch, pos.row.no), wbwHidden: R.wbwHidden, notes, needles: o.needles || null,
+      fav: notes.some(n => n.type === 'fav'), noteCount: notes.filter(n => n.type === 'note' || n.type === 'quest').length, canSecond: !!B2, second: sec, mode: o.mode });
+    const v = make(second);
+    if (late) {
+      const wait = h('div.alt-wait', null, h('i'), h('span', { text: 'Loading ' + ((lib.LANG_NAMES && lib.LANG_NAMES[B2.lang]) || 'second language') + '…' }));
+      const hd = v.querySelector('.vhead'); if (hd) hd.after(wait);
+      sp.then(sec => {
+        wait.remove(); if (!sec || !GB.prefs.second) return;
+        const nv = make(sec); const sc = v.closest('.rd-scroll, .rd-cont'); const top = sc ? sc.scrollTop : 0;
+        v.replaceChildren(...nv.childNodes); v.className = nv.className; addRefs(v);
+        if (sc) sc.scrollTop = top;
+      });
+    }
     posOf.set(v, pos);
-    lib.refs(B, pos.ch, pos.row).then(list => { if (!list.length) return; const tb = v.querySelector('#toolbar'); if (!tb || tb.querySelector('[data-act="refs"]')) return;
-      tb.insertBefore(GB.render.tool('refs', 'refs', 'References', false, { 'data-n': String(list.length) }), tb.querySelector('[data-act="notes"]')); }).catch(() => {});
+    function addRefs(v) { lib.refs(B, pos.ch, pos.row).then(list => { if (!list.length) return; const tb = v.querySelector('#toolbar'); if (!tb || tb.querySelector('[data-act="refs"]')) return;
+      tb.insertBefore(GB.render.tool('refs', 'refs', 'References', false, { 'data-n': String(list.length) }), tb.querySelector('[data-act="notes"]')); }).catch(() => {}); }
+    addRefs(v);
     return v;
   }
   async function fillSlot(slot, pos, isCur, opts) {
@@ -262,7 +277,7 @@
     const right = h('div.hdr-right');
     if (!GB.isWide()) right.append(GB.hbtn('back', 'Back', () => GB.back(), 'rd-back'));
     right.append(h('button.hdr-btn.hdr-aa', { title: 'Reading options', 'aria-label': 'Reading options', onclick: () => GB.readPanel() }, h('span.aa', { text: 'Aa' })));
-    right.append(h('div.more-wrap', null, GB.hbtn('ic_more_actions.png', 'Menu', e => textMenu(e.currentTarget)), h('span.pagenum')));
+    right.append(h('div.more-wrap', null, GB.hbtn('more', 'Menu', e => textMenu(e.currentTarget)), h('span.pagenum')));
     head.append(right); pageNum();
   }
   function progress() {

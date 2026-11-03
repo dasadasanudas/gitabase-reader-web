@@ -22,7 +22,7 @@
     const st = { tab: 'contents', song: song != null ? String(song) : null };
     const existing = L.top(); if (existing && existing.kind === 'book' && existing.B === B) { existing.st.song = st.song; existing.st.tab = 'contents'; existing.refresh(); return; }
     const pg = GB.page({ kind: 'book', title: B.author || B.title, subtitle: B.author ? B.title : '', cls: 'bookpage',
-      actions: [GB.hbtn('ic_action_search.png', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => bookMenu(e.currentTarget, B, st, pg))] });
+      actions: [GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => bookMenu(e.currentTarget, B, st, pg))] });
     pg.B = B; pg.st = st;
     const tabs = h('div.btabs'); pg.el.insertBefore(tabs, pg.body);
     pg.refresh = () => render(pg, B, st, tabs);
@@ -131,7 +131,7 @@
     const top = L.top(); if (top && top.kind === 'chapter') L.pop();
     const prog = h('div.rprog', null, h('i'));
     const pg = GB.page({ kind: 'chapter', title: B.title, subtitle: lib.chapterLabel(B, ch) + ' ' + (ch.title || ''), under: prog,
-      actions: [GB.hbtn('ic_action_search.png', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => chapterMenu(e.currentTarget, B, ch))] });
+      actions: [GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => chapterMenu(e.currentTarget, B, ch))] });
     pg.B = B; pg.ch = ch;
     L.push(pg);
     { const w = document.createElement('div'); w.className = 'sk-wrap'; w.append(GB.skeletonRows(9), GB.loader('gb-loader-list')); pg.body.append(w); }

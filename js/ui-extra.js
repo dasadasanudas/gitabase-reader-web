@@ -36,7 +36,7 @@
     const needles = o.exact ? [o.q.replace(/"/g, '')] : GBFTS.needles(o.q);
     const count = h('span.sr-count', { text: '…' });
     const pg = GB.page({ kind: 'search', title: 'Search results', subtitle: o.q + (o.book ? '  ·  ' + o.book.title : ''), cls: 'searchpage',
-      actions: [count, GB.hbtn('ic_action_search.png', 'New search', () => S.dialog({ book: o.book, q: o.q }))] });
+      actions: [count, GB.hbtn('search', 'New search', () => S.dialog({ book: o.book, q: o.q }))] });
     const top = L.top(); if (top && top.kind === 'search') L.replaceTop(pg); else L.push(pg);
     const list = h('div.sr-list'); pg.body.append(list);
     const status = h('div.loading-row', { text: 'Searching…' }); pg.body.append(status);
@@ -257,7 +257,10 @@
         if (type === 'bool') { ctl = h('span.sw' + (P[k] ? '.on' : '')); onclick = () => change(k, !P[k]); }
         else if (type === 'num') { ctl = h('span.num', null, h('button.num-b', { text: '−', onclick: e => { e.stopPropagation(); change(k, Math.max(min, +P[k] - 1)); } }), h('b', { text: String(P[k]) }), h('button.num-b', { text: '+', onclick: e => { e.stopPropagation(); change(k, Math.min(max, +P[k] + 1)); } })); }
         else if (type === 'act') { onclick = () => ({ '!backup': () => GB.notes.backup(), '!restore': () => GB.restoreUI(), '!library': () => { GB.home.sub = 'mine'; L.home('L'); }, '!about': GB.about, '!order': () => GB.verseOrderPage(), '!parts': () => GB.readPanel() })[k](); }
-        else if (type === 'accent') { const A = GB.ACCENTS[P.accent] || GB.ACCENTS.tulasi; val = A.name; ctl = h('span.adot.on.mini', { style: { '--c': A.day, '--cn': A.night } }); onclick = () => choose(k, title, Object.values(GB.ACCENTS).map(x => [x.key, x.name])); }
+        else if (type === 'accent') { const A = GB.ACCENTS[P.accent] || GB.ACCENTS.tulasi, G = P.accent === 'glass', gok = GB.glass && GB.glass.check().ok;
+          val = G ? (gok ? 'Glass' : 'Glass is off here (' + GB.glass.reason() + '), using Tulasi') : A.name;
+          ctl = h('span.adot.on.mini' + (G && gok ? '.glass' : ''), { style: { '--c': A.day, '--cn': A.night } });
+          onclick = () => choose(k, title, (gok ? [['glass', 'Glass']] : []).concat(Object.values(GB.ACCENTS).map(x => [x.key, x.name]))); }
         else { const cur = type.find(o => o[0] == P[k]); val = cur ? cur[1] : String(P[k]); onclick = () => choose(k, title, type); }
         pg.body.append(h('div.pref' + (onclick ? '.click' : ''), { onclick }, h('div.pref-main', null, h('div.pref-t', { text: title }), sum ? h('div.pref-s', { text: sum }) : null, val ? h('div.pref-v', { text: val }) : null), ctl));
       }

@@ -15,9 +15,21 @@
   // ---------- page stack (left column on desktop, whole screen on phones) ----------
   const L = GB.left = { stack: [] };
   L.top = () => L.stack[L.stack.length - 1];
+  // desktop: Settings-type pages open as a window over the app instead of replacing the sidebar
+  const MODAL = { settings: 1, verseorder: 1, parts: 1, about: 1 };
+  L.isModal = p => !!(p && MODAL[p.kind] && document.documentElement.classList.contains('desk'));
+  function modalHost() {
+    let m = $('#deskModal'); if (m) return m;
+    m = h('div#deskModal', { onclick: e => { if (e.target === m) { while (L.isModal(L.top())) L.pop(); } } }, h('div.dm-win'));
+    document.body.append(m); return m;
+  }
+  function syncModal() { const m = $('#deskModal'); if (m) m.classList.toggle('on', L.stack.some(L.isModal)); }
   L.push = page => {
-    const t = L.top(); if (t) t.el.classList.add('under');
-    $('#left').append(page.el); L.stack.push(page); chrome();
+    const t = L.top(); if (t && !L.isModal(page)) t.el.classList.add('under');
+    if (L.isModal(page)) { const w = modalHost().firstChild; w.querySelectorAll('.page').forEach(x => x.classList.add('under')); w.append(page.el); page.el.classList.add('dm-page');
+      const right = page.hdr && page.hdr.querySelector('.hdr-right'); if (right && !right.querySelector('.dm-x')) right.append(h('button.hdr-btn.dm-x', { title: 'Close (Esc)', onclick: () => { while (L.isModal(L.top())) L.pop(); }, html: GB.icons.svg('close') })); }
+    else $('#left').append(page.el);
+    L.stack.push(page); chrome(); syncModal();
     requestAnimationFrame(() => page.el.classList.add('in'));
     return page;
   };
@@ -25,13 +37,13 @@
   L.pop = () => {
     if (L.stack.length <= 1) return false;
     const p = L.stack.pop(); p.el.remove(); if (p.onClose) p.onClose();
-    const t = L.top(); t.el.classList.remove('under'); if (t.refresh) t.refresh(); chrome(); return true;
+    const t = L.top(); t.el.classList.remove('under'); if (t.refresh) t.refresh(); chrome(); syncModal(); return true;
   };
   L.home = tab => {
     while (L.stack.length > 1) { const p = L.stack.pop(); p.el.remove(); if (p.onClose) p.onClose(); }
     L.top().el.classList.remove('under');
     if (tab && tab !== HOME.tab) HOME.select(tab); else HOME.render();
-    chrome();
+    chrome(); syncModal();
   };
   L.find = kind => L.stack.find(p => p.kind === kind);
   function chrome() {
@@ -41,7 +53,7 @@
   GB.chrome = chrome;
   // generic page with an app title bar
   GB.page = function (o) {
-    const back = h('button.hdr-logo', { title: 'Back', onclick: () => GB.back() }, img('headermenuicon.png'));
+    const back = h('button.hdr-logo', { title: 'Back', onclick: () => GB.back() }, img('headermenuicon.png'), ico('back', 'hdr-backic'));
     const titles = h('div.t2', null, h('div.t2a', { text: GB.ut(o.title || '') }), o.subtitle != null ? h('div.t2b', { text: GB.ut(o.subtitle) }) : null);
     const right = h('div.hdr-right'); (o.actions || []).forEach(a => right.append(a));
     const hdr = h('header.hdr' + (o.big ? '.big' : ''), null, back, titles, right);
@@ -73,6 +85,7 @@
   GB.TABS = TABS;
   function buildRail() {
     const r = $('#rail'); r.innerHTML = '';
+    r.append(h('div.rail-logo', { 'aria-hidden': 'true' }, img('headermenuicon.png')));
     for (const t of TABS) r.append(h('button.tab', { 'data-tab': t.k, title: t.title, 'aria-label': t.title, onclick: () => L.home(t.k) }, h('span.tab-ico', { html: GB.icons.svg(t.icon) }), h('span.tab-l', { text: t.title })));
   }
 
@@ -82,7 +95,7 @@
   HOME.build = function () {
     buildRail();
     hdrEl = h('header.hdr.home-hdr'); bodyEl = h('div.pc.home-body');
-    homeEl = h('div.page.home.in', null, hdrEl, h('div.strip', { text: 'Hare Kṛṣṇa Hare Kṛṣṇa Kṛṣṇa Kṛṣṇa Hare Hare · Hare Rāma Hare Rāma Rāma Rāma Hare Hare' }), bodyEl);
+    homeEl = h('div.page.home.in', null, hdrEl, h('div.strip', null, h('span', { text: 'Hare Kṛṣṇa Hare Kṛṣṇa Kṛṣṇa Kṛṣṇa Hare Hare' }), h('span.strip-dot', { text: ' · ' }), h('span', { text: 'Hare Rāma Hare Rāma Rāma Rāma Hare Hare' })), bodyEl);
     L.stack = []; $('#left').innerHTML = ''; L.push({ el: homeEl, kind: 'home', refresh: () => HOME.render() });
     HOME.render();
   };
