@@ -6,7 +6,7 @@
 const BUILD = '__BUILD__';                 // stamped by tools/build_site.py
 const ASSETS = [/*__ASSETS__*/];          // fonts and toolbar images, stamped by tools/build_site.py
 const SHELL = 'gb-shell-' + BUILD, STATIC = 'gb-static-v1', CHUNKS = 'gb-chunks-v1';
-const CORE = ['./', 'index.html', 'css/app.css', 'css/own-art.css', 'manifest.webmanifest', 'js/sqlite-src.js', 'js/db.js', 'js/util.js', 'js/assets.js', 'js/icons.js',
+const CORE = ['./', 'index.html', 'css/app.css', 'manifest.webmanifest', 'js/sqlite-src.js', 'js/db.js', 'js/util.js', 'js/icons.js',
   'js/store.js', 'js/library.js', 'js/render.js', 'js/notes.js', 'js/ui-home.js', 'js/ui-book.js', 'js/ui-reader.js', 'js/ui-extra.js', 'js/app.js'];
 
 self.addEventListener('install', e => e.waitUntil((async () => {
