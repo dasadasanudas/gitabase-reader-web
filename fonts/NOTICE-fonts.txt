@@ -1,0 +1,4 @@
+Reader Serif (ReaderSerif-Regular.ttf, ReaderSerif-Italic.ttf) is Noto Serif, Copyright 2015 Google LLC, licensed under the SIL Open Font License,
+Version 1.1 (https://openfontlicense.org). It was subset to Latin / Cyrillic / punctuation, adapted so that the diacritic convention of the
+gitabase texts (m + U+0301 and n + U+0301 for anusvara and the guttural nasal) draws as m / n with a dot above, and renamed.
+Roboto (Apache 2.0), PT Sans Narrow (OFL), Tiro Devanagari Hindi / Sanskrit (OFL), Noto Serif Devanagari (OFL).

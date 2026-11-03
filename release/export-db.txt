@@ -1,0 +1,2 @@
+# Databases to publish as zip slices under /export/ on the next Pages build (one file name per line).
+# None pending: the Hindi SB export of 2026-11-01 has been collected.

@@ -1,0 +1,4 @@
+# Build-time export of reference data from a published gitabase package (see fetch_external in tools/split_gitabase.py).
+# One job per line: URL CODE [texts=all|col,col] [all=table,table] [skip=table,table] [tag=name]
+# Remove the job line (keep comments) once the export has been collected.
+# None pending: the English SB export of 2026-11-01 (SB_full) has been collected.
