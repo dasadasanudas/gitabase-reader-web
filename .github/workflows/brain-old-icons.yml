@@ -1,0 +1,32 @@
+# One-time job (added by Brain for Sam): brings the old icons back on main by undoing the two
+# "own artwork" commits from 2 Nov. Keeps the new database. Runs once, when this file is added to preview.
+# A copy of main from before this job is kept in the branch backup-main-2026-11-03.
+name: Brain - old icons back on main
+on:
+  push:
+    branches: [preview]
+    paths: ['.github/workflows/brain-old-icons.yml']
+permissions:
+  contents: write
+  actions: write
+jobs:
+  revert:
+    runs-on: ubuntu-latest
+    env:
+      GIT_LFS_SKIP_SMUDGE: '1'
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          lfs: false
+      - name: Undo the own-art commits on main (database untouched)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git revert --no-edit 9c412b7e58a101b7a28c2f0184d62598b747d5e4 69dcaa0562cd83183cc8a518889f9bb5ada6debf
+          git diff --stat HEAD~2 HEAD
+          git push origin HEAD:main
+      - name: Rebuild the live site
+        run: gh workflow run pages.yml --ref main
