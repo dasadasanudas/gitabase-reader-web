@@ -1,15 +1,15 @@
 # Gitabase Reader · web
 
-A web recreation of **Gitabase Reader 9** for Android: same library, book, chapter and text screens, the same
-day/night themes, menus and settings, rebuilt from the APK. It reads the app's own gitabase files (`.db` /
-`.gitabase`, SQLite) and works fully offline.
+A quiet, offline reader for scripture in the browser: verse, word-for-word, translation and purport, with notes,
+topics, reading list and full-text search, in a day theme (Tulasi) and a night theme (Midnight). It opens book
+files in the gitabase format (`.db` / `.gitabase`, SQLite) and works fully offline.
 
 ## Use it offline
 1. Unzip and double-click `index.html` (Chrome, Edge or Firefox).
 2. **L › My books › Add gitabase files**, or drop the files onto the window. Files are kept in this browser
    (IndexedDB) and read page by page, so even 190 MB gitabases open instantly and never load whole.
-3. Notes, highlights, topics, reading list and history also stay in the browser. **Backup notes** saves a
-   `.json`; **Restore from backup** can merge or replace (replace asks you to type `gopi`, like the app).
+3. Notes, highlights, topics, reading list and history also stay in the browser. **Back up notes** saves a
+   `.json`; **Restore notes** can merge or replace (replace asks you to type `replace`).
 
 ## Host it (GitHub Pages)
 1. Put the gitabase files in `databases/` (Git LFS: `git lfs install`; `.gitattributes` already tracks `databases/**`).
@@ -20,16 +20,16 @@ day/night themes, menus and settings, rebuilt from the APK. It reads the app's o
    screen needs. Test locally: `python tools/prepare_library.py databases library && python -m http.server`.
 
 ## What's inside
-- Home tabs as icons: **L** library (Books / Reading / My books), **F** favourites (all / highlights / quotes /
-  texts), **Q** questions, **N** notes (to texts / general), **T** topics (#tags, `a/b` = subtopic), **D** dictionary.
+- Home tabs: library (Books / Reading / My books), saved passages (all / highlights / quotes / texts), questions,
+  notes (on texts / general), topics (#tags, `a/b` = subtopic) and the word finder.
 - Book screen with canto picker (All cantos), chapter cards, picture / card / diagram / fresco tabs; chapter text list.
 - Text screen: one text per page flowing across chapters; vertical or horizontal (paged, tap zones) reading;
   "Read book from start" (Finished list); side page buttons that only scroll; chapter drawer; Sanskrit /
-  word-by-word toggles (table or classic); selection: Copy, +Highlight, +Comment, +Question, +Quote and more.
+  word-by-word toggles (table or classic); selection: Copy, Highlight, Comment, Question, Quote and more.
 - Verse toolbar: favourite garland, compare and translate (1 = full screen, 2 = side by side with swap,
   Sanskrit toggle, scroll sync, full screen), references (unresolvable ones stay dimmed; a reference opens the
   citing text at the place of the citation), notes.
-- Reading direction is fixed by book type (Settings › Fixed direction by book type): books of verses scroll vertically, small
+- Reading direction is fixed by book type (Settings › Direction by book type): books of verses scroll vertically, small
   books page horizontally; switch it off to choose per book. Swipe left/right changes the text (touch, or a mouse drag on the side
   margins) in vertical reading, and turns the page in horizontal reading.
 - Word links open their occurrences (dictionary tables, or the books' word-by-word translations), 40 at a time.
@@ -41,7 +41,7 @@ day/night themes, menus and settings, rebuilt from the APK. It reads the app's o
   variants (`adhikar*`), sorting and scope; switch the index off for a slower substring scan.
 - Hindi typography: per-block script detection, Tiro Devanagari Hindi for prose, Tiro Devanagari Sanskrit for
   verse, Noto Serif Devanagari for bold, 0.94x size, roomy leading and paragraph spacing, never justified,
-  no-break space before danda and before a visarga used as a colon. Toggle: Settings › Match the book's script.
+  no-break space before danda and before a visarga used as a colon. Toggle: Settings › Script-aware type.
 - Keyboard: Left/Right previous/next text, PgUp/PgDn/Space scroll, Esc back.
 
 ## Publishing on GitHub Pages (github.com/dasadasanudas/gitabase-reader-web)
@@ -65,6 +65,6 @@ Settings > General > Layout: **Automatic** (desktop view from 900 px wide, mobil
 text side by side) or **Mobile view** (one screen at a time, tabs at the bottom; on a wide screen it shows as a phone-width column).
 
 ## Credits
-SQLite 3.54.1 WebAssembly (public domain). Fonts: Roboto, PT Sans Narrow, Tiro Devanagari Hindi/Sanskrit, Noto Serif Devanagari and
-Reader Serif (Noto Serif, adapted; all SIL OFL or Apache, see `fonts/NOTICE-fonts.txt`). Every icon, logo and picture is drawn for this
-app as SVG in `js/assets.js`; `css/own-art.css` draws the book covers. No images from other apps.
+SQLite 3.54.1 WebAssembly (public domain). Fonts: Roboto, Tiro Devanagari Hindi/Sanskrit, Noto Serif Devanagari, Gaura Times (verse
+and purport text, used with permission) and Reader Display (Noto Serif Display, adapted; the rest SIL OFL or Apache, see `fonts/NOTICE-fonts.txt`). Every icon, logo and picture is drawn for this
+app as SVG in `js/assets.js`; `css/theme.css` holds the palettes, type and book covers. No images from other apps.

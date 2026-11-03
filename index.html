@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<meta name="theme-color" content="#7b5549">
+<meta name="theme-color" content="#22423a">
 <title>Gitabase Reader</title>
 <link rel="icon" type="image/svg+xml" href="img/app-icon.svg">
 <link rel="apple-touch-icon" href="img/icon-192.png">
 <link rel="stylesheet" href="css/app.css">
 <link rel="stylesheet" href="css/own-art.css">
+<link rel="stylesheet" href="css/theme.css">
 </head>
 <body>
 <div id="app">
@@ -21,6 +22,7 @@
 <input type="file" id="fileAdd" accept=".db,.gitabase,.sqlite,.sqlite3,.gdb" multiple hidden>
 <input type="file" id="fileRestore" accept=".json,application/json" hidden>
 <div id="boot"><img src="img/app-icon.svg" alt=""><div class="boot-msg">Loading…</div></div>
+<script>window.GB = { APP_NAME: 'Gitabase Reader' };   // app name: change it here, in <title> and in manifest.webmanifest</script>
 <script src="js/sqlite-src.js"></script>
 <script src="js/db.js"></script>
 <script src="js/util.js"></script>
