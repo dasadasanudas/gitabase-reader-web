@@ -215,3 +215,19 @@ body.night .adot { background: var(--cn); }
 /* phones: the gold mark of the open tab sits above the icon, clear of the label */
 @media (max-width: 899px) { html:not(.lay-d) #rail .tab.on::before { top: 4px; bottom: auto; } }
 html.lay-m #rail .tab.on::before { top: 4px; bottom: auto; }
+/* second language still loading (first use of that edition) */
+.alt-wait{display:flex;align-items:center;gap:8px;margin:4px 0 10px;font:13px/1.4 var(--ui-font,Roboto,sans-serif);color:var(--muted,#7a7468)}
+.alt-wait i{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:altspin .8s linear infinite;opacity:.7}
+@keyframes altspin{to{transform:rotate(360deg)}}
+/* book covers follow the accent (Tulasi keeps its sage cloth) */
+.bk, .canto {
+  background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 45%, rgba(20,30,28,.12)),
+    linear-gradient(115deg, color-mix(in oklab, var(--chip-b) 9%, #eff0ea), color-mix(in oklab, var(--chip-b) 17%, #e2e5dc) 55%, color-mix(in oklab, var(--chip-b) 26%, #d4d9cd));
+  color: color-mix(in oklab, var(--chip-b) 55%, #10201b); }
+.bk { border-left-color: color-mix(in oklab, var(--chip-b) 78%, #0b1512); }
+.canto-mark, .vol-title { color: color-mix(in oklab, var(--chip-b) 55%, #10201b); }
+body.night .bk, body.night .canto {
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0) 45%, rgba(0,0,0,.3)),
+    linear-gradient(115deg, color-mix(in oklab, var(--chip-b) 17%, #1d2022), color-mix(in oklab, var(--chip-b) 12%, #181b1d) 55%, color-mix(in oklab, var(--chip-b) 8%, #141719));
+  color: var(--book-title); }
+body.night .canto-mark, body.night .vol-title { color: var(--book-title); }

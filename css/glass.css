@@ -1,0 +1,82 @@
+/* Gitabase Reader web: Glass theme surfaces (html.glass, set by js/glass.js only when the device can run it).
+   The LGX canvas (#glassFx) sits under the app and draws the wallpaper and the real glass; here the matching DOM
+   surfaces turn transparent, so their text sits on that glass. Reading stays on solid paper. */
+#glassFx { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; display: none; }
+html.glass #glassFx { display: block; }
+html.glass #glassFx[hidden] { display: none; }
+html.glass body { background: #26453e url(../img/glass-day.jpg) center / cover no-repeat fixed; }
+html.glass body.night { background: #0b1416 url(../img/glass-night.jpg) center / cover no-repeat fixed; }
+html.glass #app { z-index: 1; background: transparent; }
+
+/* colours on light glass (day) and dark glass (night) */
+html.glass body:not(.night) #rail { --tab-ico: #2c3d38; --tab-on: #14564a; }
+html.glass body.night #rail { --tab-ico: #c9d3cf; --tab-on: #e2c47e; }
+html.glass #left {
+  --home: transparent; --card: rgba(255,255,255,.52); --card-b: rgba(255,255,255,.62); --card-p: rgba(255,255,255,.38);
+  --volumes: rgba(255,255,255,.26); --div: rgba(20,40,34,.09); --line: rgba(20,40,34,.1); --hover: rgba(255,255,255,.3); --row-p: rgba(255,255,255,.42);
+}
+html.glass body.night #left {
+  --card: rgba(255,255,255,.08); --card-b: rgba(255,255,255,.12); --card-p: rgba(255,255,255,.05);
+  --volumes: rgba(255,255,255,.05); --div: rgba(255,255,255,.08); --line: rgba(255,255,255,.1); --hover: rgba(255,255,255,.07); --row-p: rgba(255,255,255,.08);
+}
+html.glass #left .page, html.glass #left .subtabs, html.glass #left .hdr { background: transparent; }
+html.glass #left .hdr { box-shadow: inset 0 -1px 0 var(--line); }
+html.glass #left .strip { background: transparent; }
+html.glass body:not(.night) #left .strip { color: #8a5f12; }
+html.glass #left .cont-card { backdrop-filter: none; }
+html.glass #left .bk, html.glass #left .canto { box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* desktop: rail and sidebar float as glass panels on the wallpaper; the reader is a paper sheet */
+html.glass.desk #app { padding: 8px; column-gap: 8px; grid-template-columns: 56px calc(var(--sideW, 360px) - 8px) minmax(0, 1fr); }
+html.glass.desk #rail { border-radius: 22px; background: transparent; padding-top: 6px; }
+html.glass.desk #rail .tab { width: 46px; height: 48px; }
+html.glass.desk #rail .tab:hover { background: rgba(255,255,255,.18); }
+html.glass.desk #rail .tab.on { background: rgba(255,255,255,.42); color: var(--tab-on); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+html.glass.desk body.night #rail .tab.on { background: rgba(255,255,255,.12); }
+html.glass.desk #rail .tab.on::before { display: none; }
+html.glass.desk #left { border-radius: 22px; box-shadow: none; }
+html.glass.desk #left .hdr { padding-left: 16px; }
+html.glass.desk #reader { border-radius: 22px; box-shadow: 0 18px 50px rgba(0,0,0,.22), 0 0 0 .5px rgba(0,0,0,.12); }
+html.glass.desk #reader .hdr { border-radius: 22px 22px 0 0; }
+html.glass.desk #sideGrip { left: calc(64px + var(--sideW, 360px) + .5px); }
+html.glass.desk #sideGrip::after { opacity: .7; }
+
+/* phones: the home panel is glass, its title bar and the tab bar are floating glass pills */
+html.glass:not(.desk) #left { background: transparent; }
+html.glass:not(.desk) body.at-home #left { bottom: 0; }
+html.glass:not(.desk) #left .page > .hdr { margin: calc(8px + env(safe-area-inset-top, 0px)) 10px 4px; height: 50px; padding-top: 0; border-radius: 25px; box-shadow: none; }
+html.glass:not(.desk) #left .strip { margin: 0 10px; }
+html.glass:not(.desk) body.at-home #left .pc { padding-bottom: calc(var(--tabh) + 28px); }
+html.glass:not(.desk) #rail { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); height: var(--tabh); padding-bottom: 0; border-radius: 30px; background: transparent; box-shadow: none; }
+html.glass:not(.desk) #rail .tab { margin: 6px 4px; background: transparent; border-radius: 24px; }
+html.glass:not(.desk) #rail .tab.on { background: rgba(255,255,255,.4); color: var(--tab-on); }
+html.glass:not(.desk) body.night #rail .tab.on { background: rgba(255,255,255,.12); }
+html.glass:not(.desk) #rail .tab.on::before { display: none; }
+html.glass:not(.desk) #reader .hdr { background: var(--text-bg); color: var(--t1); box-shadow: inset 0 -1px 0 var(--line); }
+html.glass:not(.desk) #reader .hdr .hdr-btn, html.glass:not(.desk) #reader .hdr .t2b { color: var(--t1); }
+html.glass:not(.desk) #reader .hdr .t2a { color: var(--t2); }
+html.glass:not(.desk) #reader .hdr-logo img { filter: none; }
+
+/* light glass needs dark ink in the sidebar header (phones keep their header text on glass too) */
+html.glass body:not(.night) #left .hdr, html.glass body:not(.night) #left .hdr-title { color: #18231f; }
+html.glass body:not(.night) #left .hdr-btn { color: #2c3d38; }
+html.glass body:not(.night) #left .hdr-btn img { filter: brightness(.3) saturate(0); }
+
+/* until the first glass frame is on screen, a frosted stand-in */
+html.glass:not(.glass-live) #rail, html.glass:not(.glass-live) #left { background: rgba(255,255,255,.35); backdrop-filter: blur(30px) saturate(1.5); }
+html.glass:not(.glass-live) body.night #rail, html.glass:not(.glass-live) body.night #left { background: rgba(20,30,32,.55); }
+
+/* menus, sheets and dialogs sit over text, so they are frosted (a real blur of what is behind them) */
+html.glass .popmenu, html.glass .sheet, html.glass .dlg, html.glass .dm-win {
+  background: color-mix(in oklab, var(--menu-bg) 74%, transparent); backdrop-filter: blur(26px) saturate(1.7); -webkit-backdrop-filter: blur(26px) saturate(1.7); }
+html.glass .dm-win .page, html.glass .dm-win .hdr, html.glass .dm-nav { background: transparent; }
+html.glass .adot.glass, .adot.glass:not(:disabled) { opacity: 1; border-style: solid; }
+.adot.glass.mini { background: linear-gradient(135deg, #e9f3ef, #9cc7bb 55%, #f2d49a); border: 1px solid rgba(0,0,0,.15); }
+/* phones: the list ends above the floating tab bar, so nothing slides under it */
+html.glass:not(.desk) body.at-home #left .page.home .pc { margin-bottom: calc(var(--tabh) + 18px + env(safe-area-inset-bottom, 0px)); padding-bottom: 10px; }
+html.glass:not(.desk) body.at-home #left .pc { padding-bottom: 10px; }
+/* the Glass swatch */
+.adot.glass { background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.95), rgba(255,255,255,0) 42%), linear-gradient(135deg, #cfe7df, #7fb5a7 50%, #e8c27a); border: 1px solid rgba(0,0,0,.18); opacity: 1; }
+.adot.glass:disabled { opacity: .35; filter: grayscale(1); cursor: not-allowed; }
+.adot.glass.on { box-shadow: 0 0 0 2px var(--text-bg, #fff), 0 0 0 4px var(--accent); }
+body.night .adot.glass.on { box-shadow: 0 0 0 2px var(--text-bg), 0 0 0 4px var(--accent); } .adot.glass.mini { box-shadow: none; }
