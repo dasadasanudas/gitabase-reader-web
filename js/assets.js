@@ -5,8 +5,8 @@
 (function (GB) {
   const night = () => !!(GB.prefs && GB.prefs.night);
   // inks: one colour, or [light theme, dark theme]
-  const C = { or: '#ee7d2f', star: '#f0b429', green: '#8fae2f', blue: '#5b8db5', red: '#c0302b', yellow: '#f2c230', folder: '#e4ab2d', cream: '#f6efdc', white: '#ffffff',
-    tx: ['#995726', '#e9c46a'], mut: ['#945858', '#8a9a9c'], ink: ['#5b3a2e', '#d8b25e'], rib: ['#7b5549', '#63829a'] };
+  const C = { or: ['#1c6b58', '#e2c47e'], hd: '#e2c47e', star: '#e0a526', green: '#6f9a3a', blue: '#4f84ad', red: '#b83a32', yellow: '#e8bd3a', folder: '#c9a14a', cream: '#efe8d6', white: '#ffffff',
+    tx: ['#1d5546', '#d8b35e'], mut: ['#7b8580', '#8e9a92'], ink: ['#22423a', '#e2c47e'], rib: ['#c18b2f', '#d8b35e'] };
   const ray = (n, r1, r2, cx, cy, a0) => { let d = ''; for (let i = 0; i < n; i++) { const a = (a0 || 0) + i * 2 * Math.PI / n, c = Math.cos(a), s = Math.sin(a); d += 'M' + (cx + r1 * c).toFixed(2) + ' ' + (cy + r1 * s).toFixed(2) + 'L' + (cx + r2 * c).toFixed(2) + ' ' + (cy + r2 * s).toFixed(2); } return d; };
   // ---- stroke glyphs on a 24 grid; '@' is replaced by the ink ----
   const G = {
@@ -74,22 +74,22 @@
     '<circle cx="32" cy="12.5" r="4.6" fill="' + b + '"/><path d="M22 12.5h2.4M24.9 5.4l1.7 1.7M32 2.5v2.4M39.1 5.4l-1.7 1.7M39.6 12.5H42" stroke="' + b + '" stroke-width="2.2" stroke-linecap="round" fill="none"/>';
   const svg = (vb, body, extra) => '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + vb + '"' + (extra || '') + '>' + body + '</svg>';
   const DOC = {
-    logoHdr: () => svg('0 0 64 56', logoBody('#f2b24c', '#fde7a3')),
-    logoSplash: th => svg('0 0 64 56', th === 'dark' ? logoBody('#d9b36a', '#f0d9a0') : logoBody('#7b5549', '#d98a2b')),
-    appIcon: () => svg('0 0 64 64', '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8d6556"/><stop offset="1" stop-color="#5f3d32"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#g)"/><g transform="translate(32 32) scale(.82) translate(-32 -27.5)">' + logoBody('#f6c260', '#fff0bd') + '</g>'),
-    flagEN: () => svg('0 0 30 20', '<rect x=".5" y=".5" width="29" height="19" rx="3.5" fill="#7b5549"/><path d="M12 6H8v8h4M8 10h3.2M16 14V6l6 8V6" fill="none" stroke="#fefcdd" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'),
-    empty: th => { const a = th === 'dark' ? '#8a9a9c' : '#7b5549'; return svg('0 0 120 120', '<g fill="' + a + '" fill-opacity=".14" stroke="' + a + '" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"><rect x="20" y="42" width="19" height="50" rx="3"/><rect x="43" y="28" width="21" height="64" rx="3"/><path d="M68 36l17.5-4.6 13 49.6-17.5 4.6z"/><path d="M12 96h96" fill="none"/></g><path d="M29.5 52v14M53.5 40v14" stroke="' + a + '" stroke-width="2.6" stroke-linecap="round" opacity=".6"/>'); },
-    seal: th => { const a = th === 'dark' ? '#d8b25e' : '#9e6a3a'; return svg('0 0 64 64', '<path d="M23 40l-5 18 9-4 4 8 5-21zM41 40l5 18-9-4-4 8-5-21z" fill="' + a + '" fill-opacity=".55"/><circle cx="32" cy="26" r="19" fill="' + a + '" fill-opacity=".16" stroke="' + a + '" stroke-width="3"/><path d="M22.5 26.5l6.5 6.5 13-13.5" fill="none" stroke="' + a + '" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>'); },
-    cover: th => { const d = th === 'dark'; return svg('0 0 100 125', '<defs><linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + (d ? '#33465a' : '#946a5a') + '"/><stop offset="1" stop-color="' + (d ? '#18222d' : '#5d3b30') + '"/></linearGradient></defs><rect width="100" height="125" rx="7" fill="url(#c)"/><rect x="6" y="6" width="88" height="113" rx="4" fill="none" stroke="#e9c46a" stroke-opacity=".7" stroke-width="1.2"/><g transform="translate(50 56) scale(.9) translate(-32 -27.5)">' + logoBody('#f2b24c', '#fde7a3') + '</g><path d="M24 98h52M32 105h36" stroke="#e9c46a" stroke-opacity=".6" stroke-width="1.4" stroke-linecap="round"/>'); }
+    logoHdr: () => svg('0 0 64 56', logoBody('#e2c47e', '#f6ebc8')),
+    logoSplash: th => svg('0 0 64 56', th === 'dark' ? logoBody('#e2c47e', '#f3e2b2') : logoBody('#22423a', '#c18b2f')),
+    appIcon: () => svg('0 0 64 64', '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2e574c"/><stop offset="1" stop-color="#173029"/></linearGradient></defs><rect width="64" height="64" rx="15" fill="url(#g)"/><g transform="translate(32 32) scale(.82) translate(-32 -27.5)">' + logoBody('#e6c47a', '#f8eccb') + '</g>'),
+    flagEN: () => svg('0 0 30 20', '<rect x=".5" y=".5" width="29" height="19" rx="3.5" fill="#e9e1cc"/><path d="M12 6H8v8h4M8 10h3.2M16 14V6l6 8V6" fill="none" stroke="#1f3c35" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>'),
+    empty: th => { const a = th === 'dark' ? '#8e9a92' : '#22423a'; return svg('0 0 120 120', '<g fill="' + a + '" fill-opacity=".14" stroke="' + a + '" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"><rect x="20" y="42" width="19" height="50" rx="3"/><rect x="43" y="28" width="21" height="64" rx="3"/><path d="M68 36l17.5-4.6 13 49.6-17.5 4.6z"/><path d="M12 96h96" fill="none"/></g><path d="M29.5 52v14M53.5 40v14" stroke="' + a + '" stroke-width="2.6" stroke-linecap="round" opacity=".6"/>'); },
+    seal: th => { const a = th === 'dark' ? '#d8b35e' : '#c18b2f'; return svg('0 0 64 64', '<path d="M23 40l-5 18 9-4 4 8 5-21zM41 40l5 18-9-4-4 8-5-21z" fill="' + a + '" fill-opacity=".55"/><circle cx="32" cy="26" r="19" fill="' + a + '" fill-opacity=".16" stroke="' + a + '" stroke-width="3"/><path d="M22.5 26.5l6.5 6.5 13-13.5" fill="none" stroke="' + a + '" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>'); },
+    cover: th => { const d = th === 'dark'; return svg('0 0 100 125', '<defs><linearGradient id="c" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + (d ? '#24393a' : '#2e574c') + '"/><stop offset="1" stop-color="' + (d ? '#121d1f' : '#173029') + '"/></linearGradient></defs><rect width="100" height="125" rx="7" fill="url(#c)"/><rect x="6" y="6" width="88" height="113" rx="4" fill="none" stroke="#e9c46a" stroke-opacity=".7" stroke-width="1.2"/><g transform="translate(50 56) scale(.9) translate(-32 -27.5)">' + logoBody('#e2c47e', '#f6ebc8') + '</g><path d="M24 98h52M32 105h36" stroke="#e9c46a" stroke-opacity=".6" stroke-width="1.4" stroke-linecap="round"/>'); }
   };
   // ---- the old file names -> [glyph or doc, ink] ----
   const M = {
     headermenuicon: ['doc:logoHdr'], splash_icon: ['doc:logoSplash'], gitabase_reader_icon: ['doc:appIcon'], eng: ['doc:flagEN'],
     my_books_empty: ['doc:empty'], purnam: ['doc:seal'], book_cover: ['doc:cover'],
-    change_content: ['swap', C.or], ic_change_gitabase: ['swap', C.or], ic_arrow_drop_down_28: ['caret', C.cream],
+    change_content: ['swap', C.hd], ic_change_gitabase: ['swap', C.or], ic_arrow_drop_down_28: ['caret', C.cream],
     ic_action_search: ['search', C.or], cab_search: ['search', C.or], ic_more_actions: ['more', C.or], ic_screen_manager: ['history', C.or],
     ic_bookmark: ['bookmark', C.or], ic_bookmark_open: ['bmOpen', C.or], ic_remove_bookmark: ['bmX', C.red], ic_bookmark_icon_short: ['bmFill', C.ink],
-    bookmark_open: ['ribbon', C.rib], ic_plus_orange: ['plus', '#ff6a13'], ic_new_topic: ['folderPlus', C.or], ic_go4seach: ['goCircle', C.tx],
+    bookmark_open: ['ribbon', C.rib], ic_plus_orange: ['plus', C.or], ic_new_topic: ['folderPlus', C.or], ic_go4seach: ['goCircle', C.tx],
     ic_go_left: ['left', C.or], ic_go_right: ['right', C.or],
     ic_page_up: ['up', C.tx], ic_page_dn: ['down', C.tx], ic_page_close: ['close', C.tx],
     ic_srch_arrow_up: ['up', C.tx], ic_srch_arrow_down: ['down', C.tx], ic_srch_arrow_cross: ['close', C.tx],
@@ -115,14 +115,21 @@
   }
   GB.asset = function (url) {
     const m = /^(?:\.\/)?img\/(?:ui|tb)\/([A-Za-z0-9_]+)\.(?:png|jpg|svg)$/.exec(String(url)); if (!m) return url;
-    let base = m[1], theme = null; const s = /_(o|d|dark)$/.exec(base);
+    let base = m[1], theme = null, hdr = false; const hs = /_hdr$/.exec(base); if (hs) { hdr = true; base = base.slice(0, -4); }
+    const s = /_(o|d|dark)$/.exec(base);
     if (s) { theme = s[1] === 'o' ? 'light' : 'dark'; base = base.slice(0, -s[0].length); }
-    const spec = M[m[1]] || M[base]; if (!spec) { console.warn('no artwork for', url); return url; }
+    const spec0 = M[base] || M[m[1]]; const spec = spec0 && hdr && spec0[0].slice(0, 4) !== 'doc:' ? [spec0[0], C.hd] : spec0; if (!spec) { console.warn('no artwork for', url); return url; }
     const th = theme || (night() ? 'dark' : 'light'), key = m[1] + '|' + th;
     let out = cache.get(key);
     if (!out) { out = 'data:image/svg+xml,' + encodeURIComponent(build(spec, th)); cache.set(key, out); }
     return out;
   };
+  // loading animation: the logo's book with a gilt page turning over the spine and the sun breathing above it
+  const LOADER = '<svg class="gbl" viewBox="0 0 64 56" aria-hidden="true"><g class="gbl-pages"><path d="M30.2 52.5C24.6 47.4 16 45.8 7 46.6V21.2c8.7-.8 17 .7 23.2 5.6z"/><path d="M33.8 52.5c5.6-5.1 14.2-6.7 23.2-5.9V21.2c-8.7-.8-17 .7-23.2 5.6z"/></g>' +
+    '<path class="gbl-turn" d="M33.8 52.5c5.6-5.1 14.2-6.7 23.2-5.9V21.2c-8.7-.8-17 .7-23.2 5.6z"/><g class="gbl-sun"><circle cx="32" cy="12.5" r="4.6"/><path d="M22 12.5h2.4M24.9 5.4l1.7 1.7M32 2.5v2.4M39.1 5.4l-1.7 1.7M39.6 12.5H42"/></g></svg>';
+  GB.loader = function (cls) { const d = document.createElement('div'); d.className = 'gb-loader' + (cls ? ' ' + cls : ''); d.setAttribute('role', 'status'); d.setAttribute('aria-label', 'Loading'); d.innerHTML = LOADER; return d; };
+  // placeholder rows while a chapter's texts load
+  GB.skeletonRows = function (n) { const f = document.createElement('div'); f.className = 'sk-list'; for (let i = 0; i < (n || 8); i++) f.insertAdjacentHTML('beforeend', '<div class="sk-row"><i class="sk-a"></i><i class="sk-b"></i><i class="sk-c"></i></div>'); return f; };
   GB.artwork = { names: () => Object.keys(M), svg: (name, th) => { const sp = M[name]; return sp ? build(sp, th || 'light') : ''; }, doc: DOC };
   // every <img> asks for the app's old names; answer with the drawings
   const d = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');

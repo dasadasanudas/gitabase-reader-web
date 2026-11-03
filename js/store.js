@@ -36,7 +36,7 @@
   };
   GB.store = store;
 
-  // ---------- preferences (from res/xml/preferences of the APK, plus web-only display switches) ----------
+  // ---------- preferences ----------
   const DEF = {
     night: false,
     openHistoryOnLaunch: false,
@@ -46,7 +46,7 @@
     fixedDirection: true,           // verse books scroll vertically, small books page horizontally
     defaultLayout: 'vertical',      // vertical | horizontal  (pr_default_layout_key)
     showSanskrit: true,
-    wbwStyle: 'table',              // table | classic (APK default: table)
+    wbwStyle: 'table',              // table | classic
     hideDevanagari: false,
     fontSize: 18, fontStep: 1,
     textAlign: 'left',              // left | justify | center

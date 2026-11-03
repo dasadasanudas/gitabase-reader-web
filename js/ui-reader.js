@@ -1,6 +1,6 @@
-/* Gitabase Reader web: text screen. One text per page (like the APK's WebViewPager) in a 3-slot pager that
+/* Gitabase Reader web: text screen. One text per page in a 3-slot pager that
    flows across chapters; vertical or horizontal (paged, tap zones) reading; side page buttons; chapter drawer;
-   selection actions (+Highlight +Comment +Question +Quote); verse toolbar (favourite, compare, translate, refs, notes). */
+   selection actions (Highlight, Comment, Question, Quote); verse toolbar (favourite, compare, translate, refs, notes). */
 'use strict';
 (function (GB) {
   const { h, $, img } = GB;
@@ -24,7 +24,7 @@
     pager.append(...slots);
     pagectl = h('div.rd-pagectl', null, h('button.pg-up', { title: 'Page up', onclick: () => pageStep(-1) }, h('img')), h('button.pg-x', { title: 'Hide page buttons', onclick: crossBtn }, h('img')), h('button.pg-dn', { title: 'Page down', onclick: () => pageStep(1) }, h('img')));
     const eL = h('button.rd-edge.l', { title: 'Previous text (←)', onclick: () => go(-1) }, img('ic_go_left.png')), eR = h('button.rd-edge.r', { title: 'Next text (→)', onclick: () => go(1) }, img('ic_go_right.png'));
-    loadingEl = h('div.rd-loading', { hidden: true }, h('div.spinner'));
+    loadingEl = h('div.rd-loading', { hidden: true }, GB.loader());
     scrim = h('div.rd-scrim', { hidden: true, onclick: closeDrawer }); drawer = h('div.rd-drawer');
     el = h('div.rd', { hidden: true }, head, prog, sbar, h('div.rd-stage', null, pager, pagectl, eL, eR, loadingEl), scrim, drawer);
     root.append(emptyEl, el);
@@ -53,9 +53,9 @@
       const sw = h('input.switch', { type: 'checkbox' });
       const opt = (m, label) => h('div.mode-opt', { onclick: () => { settled = true; d.close(m); res({ mode: m, fromStart: sw.checked }); } }, h('span.mode-ic', { html: GB.icons.svg(m) }), h('span', { text: label }));
       const body = h('div.modes', null, only !== 'horizontal' ? opt('vertical', 'Vertical scrolling') : null, only !== 'vertical' ? opt('horizontal', 'Horizontal scrolling') : null, h('div.mode-div'),
-        h('label.mode-start', null, h('span', { text: 'Read book from start' }), sw),
+        h('label.mode-start', null, h('span', { text: 'Start from the first page' }), sw),
         h('div.mode-hint', { text: 'Starting from the first page lets the book count as fully read when you finish, and appear in your Finished list as an achievement.' }));
-      const d = GB.ui.dialog({ title: 'How would you like to read this book?', body, buttons: [{ label: 'CANCEL', value: null }], onClose: () => { if (!settled) res(null); } });
+      const d = GB.ui.dialog({ title: 'How do you want to read this book?', body, buttons: [{ label: 'Cancel', value: null }], onClose: () => { if (!settled) res(null); } });
     });
   }
   R.open = async function (B, ch, i, opts) {
@@ -170,7 +170,7 @@
         h('div.t2a', null, h('span.tri', { text: '▾' }), GB.ut(B.title)), h('div.t2b', { text: GB.ut(refText()) })));
     const right = h('div.hdr-right');
     if (!GB.isWide()) right.append(GB.hbtn('back', 'Back', () => GB.back(), 'rd-back'));
-    right.append(GB.prefs.topRightIcon === 'bookmark' ? GB.hbtn('ic_bookmark.png', 'Create Bookmark', bookmark) : GB.hbtn('ic_screen_manager.png', 'Browsing History', () => GB.historyPage()));
+    right.append(GB.prefs.topRightIcon === 'bookmark' ? GB.hbtn('ic_bookmark.png', 'Set bookmark', bookmark) : GB.hbtn('ic_screen_manager.png', 'History', () => GB.historyPage()));
     right.append(h('div.more-wrap', null, GB.hbtn('ic_more_actions.png', 'Menu', e => textMenu(e.currentTarget)), h('span.pagenum')));
     head.append(right); pageNum();
   }
@@ -190,16 +190,16 @@
   function textMenu(anchor) {
     const P = GB.prefs;
     GB.ui.menu(anchor, [
-      { label: 'Create Bookmark', icon: 'ic_bookmark.png', onClick: bookmark },
+      { label: 'Set bookmark', icon: 'ic_bookmark.png', onClick: bookmark },
       { label: 'Search', icon: 'cab_search.png', onClick: () => GB.search.dialog({ book: cur.B }) },
-      { label: P.pageButtons ? 'Disable page by page reading' : 'Paginated reading mode', icon: 'ic_paged_scroll.png', onClick: () => { GB.setPref('pageButtons', !P.pageButtons); pagectl.hidden = !GB.prefs.pageButtons; } },
+      { label: P.pageButtons ? 'Hide page buttons' : 'Show page buttons', icon: 'ic_paged_scroll.png', onClick: () => { GB.setPref('pageButtons', !P.pageButtons); pagectl.hidden = !GB.prefs.pageButtons; } },
       { label: hz ? 'Vertical reading' : 'Horizontal reading', icon: hz ? 'vertical' : 'horizontal', onClick: toggleHz },
-      { label: P.night ? 'Light Theme' : 'Night Mode', icon: P.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
-      { label: 'Bookmarking', icon: 'ic_reading.png', sub: [{ label: 'Add to Reading List', icon: 'ic_reading.png', onClick: async () => { await bookmark(); } }] },
-      { label: 'Notes', icon: 'ic_menu_comment.png', sub: [{ label: 'Add to favorites', icon: 'cab_fav.png', onClick: toggleFav }, { label: 'Add question/note', icon: 'ic_menu_comment.png', onClick: () => GB.noteEdit({ type: 'note', ref: GB.notes.ref(cur.B, cur.ch, cur.row) }) }, { label: 'Show all notes', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(cur.B) }] },
-      { label: 'Research', icon: 'ic_menu_compare.png', sub: [{ label: 'Translate', icon: 'ic_menu_translate.png', onClick: () => GB.compare.selector(cur, 'translate') }, { label: 'Compare', icon: 'ic_menu_compare.png', onClick: () => GB.compare.selector(cur, 'compare') }, { label: 'Open in new window', icon: 'ic_chapter_link.png', onClick: () => window.open(deepLink(), '_blank') }] },
-      { label: 'Text', icon: 'ic_copy.png', sub: [{ label: speaking() ? 'Stop reading aloud' : 'Read it Aloud', icon: 'ic_read_aloud.png', onClick: readAloud }, { label: 'Copy Text', icon: 'ic_copy.png', onClick: copyText }, { label: 'Copy link', icon: 'ic_url.png', onClick: async () => { await GB.copyText(deepLink()); GB.ui.toast('Link copied'); } }] },
-      { label: 'Font', icon: 'font', sub: [{ label: 'Diakritics/Simple', icon: 'font', onClick: () => { GB.setPref('diacritics', !P.diacritics); GB.applyPrefs(); } }, { label: 'Increase font', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) }, { label: 'Decrease font', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }] },
+      { label: P.night ? 'Day theme' : 'Night theme', icon: P.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
+      { label: 'Bookmarks', icon: 'ic_reading.png', sub: [{ label: 'Add to reading list', icon: 'ic_reading.png', onClick: async () => { await bookmark(); } }] },
+      { label: 'Notes', icon: 'ic_menu_comment.png', sub: [{ label: 'Favourite', icon: 'cab_fav.png', onClick: toggleFav }, { label: 'Add note or question', icon: 'ic_menu_comment.png', onClick: () => GB.noteEdit({ type: 'note', ref: GB.notes.ref(cur.B, cur.ch, cur.row) }) }, { label: 'All notes in this book', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(cur.B) }] },
+      { label: 'Compare & translate', icon: 'ic_menu_compare.png', sub: [{ label: 'Translate', icon: 'ic_menu_translate.png', onClick: () => GB.compare.selector(cur, 'translate') }, { label: 'Compare', icon: 'ic_menu_compare.png', onClick: () => GB.compare.selector(cur, 'compare') }, { label: 'Open in new window', icon: 'ic_chapter_link.png', onClick: () => window.open(deepLink(), '_blank') }] },
+      { label: 'Text', icon: 'ic_copy.png', sub: [{ label: speaking() ? 'Stop reading aloud' : 'Read aloud', icon: 'ic_read_aloud.png', onClick: readAloud }, { label: 'Copy text', icon: 'ic_copy.png', onClick: copyText }, { label: 'Copy link', icon: 'ic_url.png', onClick: async () => { await GB.copyText(deepLink()); GB.ui.toast('Link copied'); } }] },
+      { label: 'Font', icon: 'font', sub: [{ label: 'Diacritics on / off', icon: 'font', onClick: () => { GB.setPref('diacritics', !P.diacritics); GB.applyPrefs(); } }, { label: 'Larger text', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) }, { label: 'Smaller text', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }] },
       { label: 'Library', icon: 'ic_menu_books.png', onClick: () => { L.home('L'); R.close(); } },
       { label: 'Settings', icon: 'ic_mmenu_settings.png', onClick: () => GB.settingsPage() }]);
   }
@@ -250,7 +250,7 @@
   R.pageStep = pageStep;
   function crossBtn() {
     if (GB.prefs.crossButton === 'close') { GB.back(); return; }
-    GB.setPref('pageButtons', false); pagectl.hidden = true; GB.ui.toast('Page buttons hidden. Menu › Paginated reading mode shows them again');
+    GB.setPref('pageButtons', false); pagectl.hidden = true; GB.ui.toast('Page buttons hidden. Menu › Show page buttons brings them back');
   }
   function hzLayout() { const sc = scrollOf(slots[1]); const v = sc.querySelector('.verse'); if (!v) return; v.style.setProperty('--pw', sc.clientWidth + 'px'); pageNum(); }
   function hzGoLast() { const sc = scrollOf(slots[1]); requestAnimationFrame(() => { sc.scrollLeft = sc.scrollWidth; pageNum(); }); }
@@ -258,7 +258,7 @@
     if (await GB.store.kvGet('hzHint', false)) return;
     if (hint) hint.remove();
     hint = h('div.hz-hint', { onclick: () => { hint.remove(); hint = null; GB.store.kvSet('hzHint', true); } },
-      h('div.hz-z', { text: 'Tap to swipe left' }), h('div.hz-z.c', { text: 'Tap to show or hide the title bar' }), h('div.hz-z', { text: 'Tap to swipe right' }), h('img.hz-x', { src: 'img/ui/ic_horizontal_hint_close.svg' }));
+      h('div.hz-z', { text: 'Tap: previous page' }), h('div.hz-z.c', { text: 'Tap: show or hide the title bar' }), h('div.hz-z', { text: 'Tap: next page' }), h('img.hz-x', { src: 'img/ui/ic_horizontal_hint_close.svg' }));
     el.querySelector('.rd-stage').append(hint);
   }
   let sx = null, sy = null;
@@ -289,8 +289,8 @@
   }
   async function toggleFav() {
     const ex = GB.notes.forText(cur.B, cur.ch, cur.row).find(n => n.type === 'fav');
-    if (ex) { await GB.notes.remove(ex.id); GB.ui.toast('Removed from favourite texts'); }
-    else { const v = scrollOf(slots[1]).querySelector('#verseTransl2'); await GB.notes.save({ type: 'fav', ref: GB.notes.ref(cur.B, cur.ch, cur.row), quote: v ? v.textContent.trim() : (cur.row.preview || ''), tags: [] }); GB.ui.toast('Added to favourite texts'); }
+    if (ex) { await GB.notes.remove(ex.id); GB.ui.toast('Removed from favourites'); }
+    else { const v = scrollOf(slots[1]).querySelector('#verseTransl2'); await GB.notes.save({ type: 'fav', ref: GB.notes.ref(cur.B, cur.ch, cur.row), quote: v ? v.textContent.trim() : (cur.row.preview || ''), tags: [] }); GB.ui.toast('Added to favourites'); }
     R.rerender(); GB.refreshAll();
   }
   function doAct(act, node) {
@@ -305,7 +305,7 @@
     const list = GB.notes.forText(cur.B, cur.ch, cur.row); const box = h('div');
     if (!list.length) box.append(h('div.help-row', { text: 'No notes on this text yet. Select words in the text to highlight, comment or ask a question.' }));
     list.forEach(n => box.append(GB.noteCard(n)));
-    box.append(h('div.sheet-actions', null, h('button.btn', { onclick: () => { s.close(); GB.noteEdit({ type: 'note', ref: GB.notes.ref(cur.B, cur.ch, cur.row) }); } }, GB.ico('comment'), h('span', { text: 'Add question/note' }))));
+    box.append(h('div.sheet-actions', null, h('button.btn', { onclick: () => { s.close(); GB.noteEdit({ type: 'note', ref: GB.notes.ref(cur.B, cur.ch, cur.row) }); } }, GB.ico('comment'), h('span', { text: 'Add note or question' }))));
     const s = GB.ui.sheet({ title: 'Notes · ' + lib.label(cur.B, cur.ch.song, cur.ch.ch, cur.row.no), content: box });
   }
   function noteMenu(id, e) {
@@ -370,13 +370,13 @@
   }
   function showSelbar(range) {
     if (!selbar) {
-      // desktop: a floating bar over the selection. Touch screens: the APK's contextual action bar across the top.
+      // desktop: a floating bar over the selection. Touch screens: an action bar across the top.
       const b = (label, fn, icon, cls) => h('button.sb-b' + (cls || ''), { onmousedown: e => e.preventDefault(), onclick: fn, title: label },
         icon ? (/\.png$/.test(icon) ? img(icon) : GB.ico(icon)) : null, h('span', { text: label }));
       selbar = h('div.selbar', { role: 'toolbar', 'aria-label': 'Selected text' },
         b('Done', clearSel, 'check', '.sb-done'),
-        b('Copy', selCopy, 'copy', '.sb-copy'), b('+Highlight', () => addSel('highl'), 'cab_highl.png'), b('+Comment', () => addSel('note'), 'cab_comment.png'),
-        b('+Question', () => addSel('quest'), 'qmark.png'), b('+Quote', () => addSel('quote'), 'ic_copy_quote.png'),
+        b('Copy', selCopy, 'copy', '.sb-copy'), b('Highlight', () => addSel('highl'), 'cab_highl.png'), b('Comment', () => addSel('note'), 'cab_comment.png'),
+        b('Question', () => addSel('quest'), 'qmark.png'), b('Quote', () => addSel('quote'), 'ic_copy_quote.png'),
         h('button.sb-b.sb-more', { title: 'More', onmousedown: e => e.preventDefault(), onclick: e => selMore(e.currentTarget) }, GB.ico('more'), h('span.sb-ml', { text: 'More' })));
       $('#overlays').append(selbar);
     }
@@ -400,12 +400,12 @@
   function selMore(anchor) {
     const t = selText(); const ref = lib.label(cur.B, cur.ch.song, cur.ch.ch, cur.row.no);
     GB.ui.menu(anchor, [
-      { label: 'Copy with Ref', icon: 'copy', onClick: async () => { await GB.copyText('"' + t + '" (' + ref + ')'); GB.ui.toast('Copied'); } },
-      { label: 'Copy with Link', icon: 'link', onClick: async () => { await GB.copyText('"' + t + '" (' + ref + ')\n' + deepLink()); GB.ui.toast('Copied'); } },
+      { label: 'Copy with reference', icon: 'copy', onClick: async () => { await GB.copyText('"' + t + '" (' + ref + ')'); GB.ui.toast('Copied'); } },
+      { label: 'Copy with link', icon: 'link', onClick: async () => { await GB.copyText('"' + t + '" (' + ref + ')\n' + deepLink()); GB.ui.toast('Copied'); } },
       { label: 'Search in this book', icon: 'search', onClick: () => GB.search.run({ q: t, book: cur.B }) },
-      { label: 'Search in Gitabase', icon: 'search', onClick: () => GB.search.run({ q: t }) },
-      { label: 'Select All', icon: 'list', onClick: () => { const v = scrollOf(slots[1]).querySelector('.verse'); const r = document.createRange(); r.selectNodeContents(v); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } },
-      navigator.share ? { label: 'Share selected', icon: 'share', onClick: () => navigator.share({ text: '"' + t + '" (' + ref + ')' }).catch(() => {}) } : null].filter(Boolean));
+      { label: 'Search all books', icon: 'search', onClick: () => GB.search.run({ q: t }) },
+      { label: 'Select all', icon: 'list', onClick: () => { const v = scrollOf(slots[1]).querySelector('.verse'); const r = document.createRange(); r.selectNodeContents(v); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } },
+      navigator.share ? { label: 'Share', icon: 'share', onClick: () => navigator.share({ text: '"' + t + '" (' + ref + ')' }).catch(() => {}) } : null].filter(Boolean));
   }
   // ---------- phones: full screen while reading (pr_hide_android_status_bar) and keep the screen on ----------
   GB.screen = (function () {

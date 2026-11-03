@@ -1,4 +1,4 @@
-/* Gitabase Reader web: verse page rendering (structure of the APK's verse HTML template) and the Devanagari
+/* Gitabase Reader web: verse page rendering (verse, word-for-word, translation, purport) and the Devanagari
    typography pass: per-block script detection, Hindi prose vs Sanskrit verse faces, spacing, danda/visarga fixes. */
 'use strict';
 (function (GB) {
@@ -96,7 +96,7 @@
     // toolbar: garland (favourite), compare, translate, refs (+count), notes
     const N = P.night ? '_d' : '_o';
     const tb = h('div#toolbar');
-    tb.append(h('img.tb_img' + (o.fav ? '.on' : ''), { src: 'img/tb/ic_garland' + N + '.png', 'data-act': 'fav', title: 'Add to favorites', draggable: 'false' }));
+    tb.append(h('img.tb_img' + (o.fav ? '.on' : ''), { src: 'img/tb/ic_garland' + N + '.png', 'data-act': 'fav', title: 'Favourite', draggable: 'false' }));
     if (o.compare) tb.append(h('img.tb_img', { src: 'img/tb/ic_compare' + N + '.png', 'data-act': 'compare', title: 'Compare', draggable: 'false' }));
     if (o.translate) tb.append(h('img.tb_img', { src: 'img/tb/ic_translate' + N + '.png', 'data-act': 'translate', title: 'Translate', draggable: 'false' }));
     if (o.refs) tb.append(h('span.tb_refs_wrap', null, h('img.tb_img', { src: 'img/tb/ic_refs' + N + '.png', 'data-act': 'refs', title: 'References', draggable: 'false' }), h('span.nrefs', { text: o.refs })));

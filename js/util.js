@@ -157,11 +157,11 @@ window.GB = window.GB || {};
     return { el: box, body, close, result: p };
   }
   function confirmDlg(title, text, ok, cancel) {
-    return dialog({ title, text, buttons: [{ label: cancel || 'CANCEL', value: false }, { label: ok || 'OK', value: true }] }).result;
+    return dialog({ title, text, buttons: [{ label: cancel || 'Cancel', value: false }, { label: ok || 'OK', value: true }] }).result;
   }
   function promptDlg(title, value, hint) {
     const inp = h('input.dlg-input', { type: 'text', value: value || '', placeholder: hint || '' });
-    const d = dialog({ title, body: inp, buttons: [{ label: 'CANCEL', value: null }, { label: 'OK', onClick: () => {} }] });
+    const d = dialog({ title, body: inp, buttons: [{ label: 'Cancel', value: null }, { label: 'OK', onClick: () => {} }] });
     const okBtn = d.el.querySelectorAll('.dlg-btn')[1];
     let result = null;
     okBtn.onclick = () => { result = inp.value; d.close(result); };

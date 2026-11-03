@@ -51,7 +51,7 @@
     if (!e) e = { id: B.key, title: B.title, author: B.author, lang: B.lang, created: Date.now(), timeSpent: 0, mode: GB.prefs.defaultLayout, fromStart: false };
     Object.assign(e, { song: String(ch.song), ch: String(ch.ch), no: String(row.no), textId: row.id, preview: (row.preview || '').slice(0, 400), label: GB.lib.label(B, ch.song, ch.ch, row.no), chTitle: ch.title, lastOpened: Date.now() }, extra || {});
     const p = RD.progressOf(B, ch, i, nRows); e.progress = p; e.maxProgress = Math.max(e.maxProgress || 0, p);
-    if (e.fromStart && !e.finished && ch.idx === B.chapters.length - 1 && i === nRows - 1) { e.finished = true; e.finishedAt = Date.now(); GB.ui.toast('Book finished! It is now in your Finished list'); }
+    if (e.fromStart && !e.finished && ch.idx === B.chapters.length - 1 && i === nRows - 1) { e.finished = true; e.finishedAt = Date.now(); GB.ui.toast('Finished! The book is now on your Finished shelf'); }
     RD.map.set(B.key, e); await store.put('reading', e); emit('gb:reading'); return e;
   };
   RD.addTime = async (B, ms) => { const e = RD.map.get(B.key); if (!e) return; e.timeSpent = (e.timeSpent || 0) + ms; await store.put('reading', e); };

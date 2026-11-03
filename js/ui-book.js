@@ -31,15 +31,15 @@
   function bookMenu(anchor, B, st, pg) {
     const rd = GB.reading.get(B);
     GB.ui.menu(anchor, [
-      rd ? { label: 'Open Bookmark', icon: 'ic_bookmark_open.png', onClick: () => GB.reader.openSaved(B, rd) } : null,
-      rd ? { label: 'Forget bookmark', icon: 'ic_remove_bookmark.png', onClick: async () => { await GB.reading.remove(B.key); pg.refresh(); } } : null,
+      rd ? { label: 'Go to bookmark', icon: 'ic_bookmark_open.png', onClick: () => GB.reader.openSaved(B, rd) } : null,
+      rd ? { label: 'Clear bookmark', icon: 'ic_remove_bookmark.png', onClick: async () => { await GB.reading.remove(B.key); pg.refresh(); } } : null,
       { label: GB.prefs.showSanskrit ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.setPref('showSanskrit', !GB.prefs.showSanskrit); GB.reader.rerender(); } },
-      { label: GB.prefs.night ? 'Light Theme' : 'Night Mode', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
-      { label: 'Open randomly', icon: 'ic_random_text_o.png', onClick: async () => { const ch = B.chapters[Math.floor(Math.random() * B.chapters.length)]; const rows = await lib.chapterTexts(B, ch); GB.reader.open(B, ch, Math.floor(Math.random() * rows.length)); } },
-      { label: 'Show all notes', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
+      { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
+      { label: 'Random text', icon: 'ic_random_text_o.png', onClick: async () => { const ch = B.chapters[Math.floor(Math.random() * B.chapters.length)]; const rows = await lib.chapterTexts(B, ch); GB.reader.open(B, ch, Math.floor(Math.random() * rows.length)); } },
+      { label: 'All notes in this book', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
       { label: 'Settings', icon: 'ic_mmenu_settings.png', onClick: () => GB.settingsPage() },
-      { label: 'Increase font', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
-      { label: 'Decrease font', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }].filter(Boolean));
+      { label: 'Larger text', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
+      { label: 'Smaller text', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }].filter(Boolean));
   }
   function render(pg, B, st, tabs) {
     tabs.innerHTML = '';
@@ -132,6 +132,7 @@
       actions: [GB.hbtn('ic_action_search.png', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => chapterMenu(e.currentTarget, B, ch))] });
     pg.B = B; pg.ch = ch;
     L.push(pg);
+    { const w = document.createElement('div'); w.className = 'sk-wrap'; w.append(GB.skeletonRows(9), GB.loader('gb-loader-list')); pg.body.append(w); }
     const rows = await lib.chapterTexts(B, ch);
     const rd = GB.reading.get(B);
     prog.firstChild.style.width = Math.round(((rd && rd.progress) || 0) * 100) + '%';
@@ -163,14 +164,14 @@
   function chapterMenu(anchor, B, ch) {
     GB.ui.menu(anchor, [
       { label: 'Search', icon: 'ic_action_search.png', onClick: () => GB.search.dialog({ book: B }) },
-      { label: 'Browsing History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() },
-      { label: 'Open Bookmark', icon: 'ic_bookmark_open.png', onClick: () => { const rd = GB.reading.get(B); if (rd) GB.reader.openSaved(B, rd); else GB.ui.toast('No bookmark in this book yet'); } },
+      { label: 'History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() },
+      { label: 'Go to bookmark', icon: 'ic_bookmark_open.png', onClick: () => { const rd = GB.reading.get(B); if (rd) GB.reader.openSaved(B, rd); else GB.ui.toast('No bookmark in this book yet'); } },
       { label: 'Library', icon: 'ic_menu_books.png', onClick: () => L.home('L') },
       { label: GB.prefs.showSanskrit ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.setPref('showSanskrit', !GB.prefs.showSanskrit); GB.reader.rerender(); } },
-      { label: GB.prefs.night ? 'Light Theme' : 'Night Mode', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
-      { label: 'Show all notes', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
+      { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
+      { label: 'All notes in this book', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
       { label: 'Settings', icon: 'ic_mmenu_settings.png', onClick: () => GB.settingsPage() },
-      { label: 'Increase font', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
-      { label: 'Decrease font', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }]);
+      { label: 'Larger text', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
+      { label: 'Smaller text', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }]);
   }
 })(window.GB);

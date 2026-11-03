@@ -49,7 +49,7 @@
     const el = h('div.page' + (o.cls ? '.' + o.cls : ''), null, hdr, o.under || null, body);
     return { el, hdr, body, titles, kind: o.kind, refresh: o.refresh, onClose: o.onClose };
   };
-  GB.hbtn = (iconName, title, onclick, cls) => h('button.hdr-btn' + (cls ? '.' + cls : ''), { title, onclick }, iconName.indexOf('.') > 0 ? img(iconName) : ico(iconName));
+  GB.hbtn = (iconName, title, onclick, cls) => h('button.hdr-btn' + (cls ? '.' + cls : ''), { title, onclick }, iconName.indexOf('.') > 0 ? img(iconName.replace(/\.(png|svg)$/, '_hdr.$1')) : ico(iconName));
 
   // ---------- back: overlays -> reader (phone) -> page stack -> home tab ----------
   GB.back = function () {
@@ -66,11 +66,12 @@
     }
   };
 
-  // ---------- rail / bottom tabs (icons instead of the APK's letters) ----------
+  // ---------- rail / bottom tabs ----------
+  GB.APP_NAME = GB.APP_NAME || 'Gitabase Reader';   // shown in the menu and About; index.html and manifest.webmanifest carry it too
   const TABS = [
-    { k: 'L', icon: 'lib', title: 'My Library' }, { k: 'F', icon: 'fav', title: 'Favourite texts and quotes' },
+    { k: 'L', icon: 'lib', title: 'Library' }, { k: 'F', icon: 'fav', title: 'Saved passages' },
     { k: 'Q', icon: 'quest', title: 'Questions' }, { k: 'N', icon: 'note', title: 'Notes' },
-    { k: 'T', icon: 'topic', title: 'Bookmark Topics' }, { k: 'D', icon: 'dict', title: 'Gitabase Dictionary' }];
+    { k: 'T', icon: 'topic', title: 'Topics' }, { k: 'D', icon: 'dict', title: 'Word finder' }];
   GB.TABS = TABS;
   function buildRail() {
     const r = $('#rail'); r.innerHTML = '';
@@ -83,7 +84,7 @@
   HOME.build = function () {
     buildRail();
     hdrEl = h('header.hdr.home-hdr'); bodyEl = h('div.pc.home-body');
-    homeEl = h('div.page.home.in', null, hdrEl, h('div.strip', { text: 'Hare Krishna Hare Krishna Krishna Krishna Hare Hare · Hare Rama Hare Rama Rama Rama Hare Hare' }), bodyEl);
+    homeEl = h('div.page.home.in', null, hdrEl, h('div.strip', { text: 'Hare Kṛṣṇa Hare Kṛṣṇa Kṛṣṇa Kṛṣṇa Hare Hare · Hare Rāma Hare Rāma Rāma Rāma Hare Hare' }), bodyEl);
     L.stack = []; $('#left').innerHTML = ''; L.push({ el: homeEl, kind: 'home', refresh: () => HOME.render() });
     HOME.render();
   };
@@ -96,7 +97,7 @@
   };
   function renderHeader() {
     hdrEl.innerHTML = '';
-    const logo = h('button.hdr-logo', { title: 'Main Menu', onclick: e => tabMenu(e.currentTarget) }, img('headermenuicon.png'));
+    const logo = h('button.hdr-logo', { title: 'Menu', onclick: e => tabMenu(e.currentTarget) }, img('headermenuicon.png'));
     hdrEl.append(logo);
     const right = h('div.hdr-right');
     if (HOME.tab === 'L') {
@@ -104,20 +105,20 @@
       const flag = cur === 'eng' ? img('eng.png', 'flag') : h('span.flag.txt', { text: (cur || '··').slice(0, 2).toUpperCase() });
       const langBtn = h('button.hdr-dd', { title: 'Language', onclick: e => langMenu(e.currentTarget) }, flag, h('span.dd-text', { text: cur || 'all' }), img('ic_arrow_drop_down_28.svg', 'dd-arrow'));
       const files = filesFor(cur); const ff = files.find(D => D.id === GB.prefs.fileFilter);
-      const typeBtn = h('button.hdr-dd.grow', { title: 'Change Gitabase', onclick: e => contentMenu(e.currentTarget) }, img('change_content.png', 'dd-swap'), h('span.dd-text', { text: ff ? shortName(ff.name) : 'texts' }), img('ic_arrow_drop_down_28.svg', 'dd-arrow'));
+      const typeBtn = h('button.hdr-dd.grow', { title: 'Choose collection', onclick: e => contentMenu(e.currentTarget) }, img('change_content.png', 'dd-swap'), h('span.dd-text', { text: ff ? shortName(ff.name) : 'texts' }), img('ic_arrow_drop_down_28.svg', 'dd-arrow'));
       hdrEl.append(h('div.hdr-lib', null, langs.length ? langBtn : null, typeBtn));
       right.append(GB.hbtn('ic_action_search.png', 'Search', () => GB.search.dialog({})));
     } else {
-      const titles = { F: favTitle(), Q: HOME.qGeneral ? '«General Questions' : '»Questions to texts', N: HOME.nGeneral ? '«General Notes' : '»Notes to texts', T: 'Bookmark Topics', D: 'Gitabase Dictionary' };
+      const titles = { F: favTitle(), Q: HOME.qGeneral ? 'General questions' : 'Questions on texts', N: HOME.nGeneral ? 'General notes' : 'Notes on texts', T: 'Topics', D: 'Word finder' };
       const t = h('div.hdr-title', { text: titles[HOME.tab], onclick: () => { if (HOME.tab === 'Q') { HOME.qGeneral = !HOME.qGeneral; HOME.render(); } if (HOME.tab === 'N') { HOME.nGeneral = !HOME.nGeneral; HOME.render(); } } });
       if (HOME.tab === 'Q' || HOME.tab === 'N') t.classList.add('switch');
       hdrEl.append(t);
-      if ((HOME.tab === 'Q' && HOME.qGeneral) || (HOME.tab === 'N' && HOME.nGeneral)) right.append(GB.hbtn('ic_plus_orange.png', HOME.tab === 'Q' ? 'Add General Question' : 'Add General Note', () => GB.noteEdit({ type: HOME.tab === 'Q' ? 'quest' : 'note', general: true })));
-      if (HOME.tab === 'T') right.append(GB.hbtn('ic_new_topic.png', 'Add Topic', addTopic));
+      if ((HOME.tab === 'Q' && HOME.qGeneral) || (HOME.tab === 'N' && HOME.nGeneral)) right.append(GB.hbtn('ic_plus_orange.png', HOME.tab === 'Q' ? 'New question' : 'New note', () => GB.noteEdit({ type: HOME.tab === 'Q' ? 'quest' : 'note', general: true })));
+      if (HOME.tab === 'T') right.append(GB.hbtn('ic_new_topic.png', 'New topic', addTopic));
     }
     hdrEl.append(right);
   }
-  const favTitle = () => ({ all: 'Favourite texts and quotes', quote: 'Favourite quotes', fav: 'Favourite texts', highl: 'Highlights' })[HOME.favFilter];
+  const favTitle = () => ({ all: 'Saved passages', quote: 'Saved quotes', fav: 'Favourite texts', highl: 'Highlights' })[HOME.favFilter];
   function curLang() { const ls = lib.langs(); if (GB.prefs.lang === '*') return ''; if (ls.includes(GB.prefs.lang)) return GB.prefs.lang; return ls.includes('eng') ? 'eng' : (ls[0] || ''); }
   HOME.curLang = curLang;
   const filesFor = lang => Array.from(lib.dbs.values()).filter(D => !lang || D.lang === lang);
@@ -129,37 +130,37 @@
   }
   function contentMenu(anchor) {
     const files = filesFor(curLang());
-    const items = [{ header: true, label: 'Change Gitabase' }, { label: 'texts (all files)', checked: !GB.prefs.fileFilter, onClick: () => { GB.setPref('fileFilter', ''); HOME.render(); } }]
+    const items = [{ header: true, label: 'Choose collection' }, { label: 'All texts', checked: !GB.prefs.fileFilter, onClick: () => { GB.setPref('fileFilter', ''); HOME.render(); } }]
       .concat(files.map(D => ({ label: shortName(D.name) + ' · ' + GB.fmtSize(D.size), checked: GB.prefs.fileFilter === D.id, onClick: () => { GB.setPref('fileFilter', D.id); HOME.render(); } })));
-    if (!lib.hosted) items.push({ divider: true }, { label: 'DOWNLOAD More Books', icon: 'ic_plus_orange.png', onClick: () => GB.addFilesUI() });
+    if (!lib.hosted) items.push({ divider: true }, { label: 'Add books', icon: 'ic_plus_orange.png', onClick: () => GB.addFilesUI() });
     GB.ui.menu(anchor, items, { align: 'left' });
   }
-  // per-tab menus (APK menus tabs_menu_l / f / q / n / t / d)
+  // per-tab menus
   function tabMenu(anchor) {
-    const common = [{ label: 'Browsing History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() }];
-    const notesIO = [{ label: 'Backup notes', icon: 'ic_save_to_cloud.png', onClick: () => GB.notes.backup() }, { label: 'Restore from backup', icon: 'ic_open_from_cloud.png', onClick: () => GB.restoreUI() }];
-    const font = [{ label: 'Increase font', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) }, { label: 'Decrease font', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }];
+    const common = [{ label: 'History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() }];
+    const notesIO = [{ label: 'Back up notes', icon: 'ic_save_to_cloud.png', onClick: () => GB.notes.backup() }, { label: 'Restore notes', icon: 'ic_open_from_cloud.png', onClick: () => GB.restoreUI() }];
+    const font = [{ label: 'Larger text', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) }, { label: 'Smaller text', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }];
     let items;
-    if (HOME.tab === 'L') items = [{ header: true, label: 'Main Menu' }].concat(common, [
-      { label: 'Gitabase Reader', icon: 'ic_mmenu_about.png', sub: [{ header: true, label: 'Gitabase Reader 9 · web' }, { label: 'About App', icon: 'ic_mmenu_about.png', onClick: GB.about },
-        { label: 'System Utils', icon: 'ic_sysutils.png', sub: [{ header: true, label: 'System Utils' }, { label: 'Clear SEARCH history', onClick: async () => { await GB.store.kvSet('searchHistory', []); GB.ui.toast('Search history cleared'); } }, { label: 'Clear browsing history', onClick: async () => { await GB.history.clear(); GB.ui.toast('Browsing history cleared'); } }].concat(notesIO) }] },
-      lib.hosted ? null : { label: 'DOWNLOAD More Books', icon: 'ic_plus_orange.png', onClick: () => GB.addFilesUI() },
-      { label: GB.prefs.night ? 'Light Theme' : 'Night Mode', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
-      { label: 'Change Gitabase', icon: 'ic_change_gitabase.png', onClick: () => contentMenu(anchor) }], font,
+    if (HOME.tab === 'L') items = [{ header: true, label: 'Menu' }].concat(common, [
+      { label: GB.APP_NAME, icon: 'ic_mmenu_about.png', sub: [{ header: true, label: GB.APP_NAME }, { label: 'About', icon: 'ic_mmenu_about.png', onClick: GB.about },
+        { label: 'Maintenance', icon: 'ic_sysutils.png', sub: [{ header: true, label: 'Maintenance' }, { label: 'Clear search history', onClick: async () => { await GB.store.kvSet('searchHistory', []); GB.ui.toast('Search history cleared'); } }, { label: 'Clear browsing history', onClick: async () => { await GB.history.clear(); GB.ui.toast('Browsing history cleared'); } }].concat(notesIO) }] },
+      lib.hosted ? null : { label: 'Add books', icon: 'ic_plus_orange.png', onClick: () => GB.addFilesUI() },
+      { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
+      { label: 'Choose collection', icon: 'ic_change_gitabase.png', onClick: () => contentMenu(anchor) }], font,
       [{ label: 'Settings', icon: 'ic_mmenu_settings.png', onClick: () => GB.settingsPage() }]);
     else if (HOME.tab === 'F') items = notesIO.concat(font, [{ divider: true },
-      { label: 'Show Selections Only', icon: 'cab_highl.png', checked: HOME.favFilter === 'quote', onClick: () => setFav('quote') },
-      { label: 'Show Favorites Only', icon: 'cab_fav.png', checked: HOME.favFilter === 'fav', onClick: () => setFav('fav') },
-      { label: 'Show Highlights', icon: 'ic_notes_highl.png', checked: HOME.favFilter === 'highl', onClick: () => setFav('highl') },
-      { label: 'Show All', checked: HOME.favFilter === 'all', onClick: () => setFav('all') }]);
-    else if (HOME.tab === 'Q') items = common.concat(notesIO, font, [{ label: 'Switch list', icon: 'ic_menu_compare.png', onClick: () => { HOME.qGeneral = !HOME.qGeneral; HOME.render(); } }, { label: 'Add General Question', icon: 'ic_menu_add_question.png', onClick: () => GB.noteEdit({ type: 'quest', general: true }) }]);
-    else if (HOME.tab === 'N') items = common.concat(notesIO, font, [{ label: 'Switch list', icon: 'ic_menu_compare.png', onClick: () => { HOME.nGeneral = !HOME.nGeneral; HOME.render(); } }, { label: 'Add General Note', icon: 'ic_menu_add_note.png', onClick: () => GB.noteEdit({ type: 'note', general: true }) }]);
-    else if (HOME.tab === 'T') items = common.concat(notesIO, font, [{ label: 'Add Topic', icon: 'ic_new_topic.png', onClick: addTopic }]);
-    else items = common.concat([{ label: 'About App', icon: 'ic_mmenu_about.png', onClick: GB.about }]);
+      { label: 'Quotes only', icon: 'cab_highl.png', checked: HOME.favFilter === 'quote', onClick: () => setFav('quote') },
+      { label: 'Favourites only', icon: 'cab_fav.png', checked: HOME.favFilter === 'fav', onClick: () => setFav('fav') },
+      { label: 'Highlights only', icon: 'ic_notes_highl.png', checked: HOME.favFilter === 'highl', onClick: () => setFav('highl') },
+      { label: 'Everything', checked: HOME.favFilter === 'all', onClick: () => setFav('all') }]);
+    else if (HOME.tab === 'Q') items = common.concat(notesIO, font, [{ label: 'General / on texts', icon: 'ic_menu_compare.png', onClick: () => { HOME.qGeneral = !HOME.qGeneral; HOME.render(); } }, { label: 'New question', icon: 'ic_menu_add_question.png', onClick: () => GB.noteEdit({ type: 'quest', general: true }) }]);
+    else if (HOME.tab === 'N') items = common.concat(notesIO, font, [{ label: 'General / on texts', icon: 'ic_menu_compare.png', onClick: () => { HOME.nGeneral = !HOME.nGeneral; HOME.render(); } }, { label: 'New note', icon: 'ic_menu_add_note.png', onClick: () => GB.noteEdit({ type: 'note', general: true }) }]);
+    else if (HOME.tab === 'T') items = common.concat(notesIO, font, [{ label: 'New topic', icon: 'ic_new_topic.png', onClick: addTopic }]);
+    else items = common.concat([{ label: 'About', icon: 'ic_mmenu_about.png', onClick: GB.about }]);
     GB.ui.menu(anchor, items.filter(Boolean), { align: 'left' });
   }
   function setFav(f) { HOME.favFilter = f; HOME.render(); }
-  async function addTopic() { const t = await GB.ui.prompt('Add Topic', '', 'topic name (use / for a subtopic)'); if (t) { await GB.notes.addTopic(t); HOME.render(); } }
+  async function addTopic() { const t = await GB.ui.prompt('New topic', '', 'topic name (use / for a subtopic)'); if (t) { await GB.notes.addTopic(t); HOME.render(); } }
 
   // ---------- L: library ----------
   function renderL(body) {
@@ -170,9 +171,9 @@
   }
   function emptyLib(list) {
     list.append(h('div.empty', null, img(GB.prefs.night ? 'my_books_empty_d.png' : 'my_books_empty.png', 'empty-img'),
-      h('div.empty-t', { text: lib.hosted ? 'The online library is empty' : 'You have not added any gitabase files yet' }),
+      h('div.empty-t', { text: lib.hosted ? 'The online library is empty' : 'No book files yet' }),
       lib.hosted ? null : h('div.empty-s', { text: 'Add .db / .gitabase files from your computer or phone. They stay in this browser, so you add them only once.' }),
-      lib.hosted ? null : h('button.btn', { onclick: () => GB.addFilesUI() }, ico('plus'), h('span', { text: 'Add gitabase files' })),
+      lib.hosted ? null : h('button.btn', { onclick: () => GB.addFilesUI() }, ico('plus'), h('span', { text: 'Add book files' })),
       lib.hosted ? null : h('div.empty-s.small', { text: 'Tip: you can also drop the files onto this window.' })));
     if (lib.broken && lib.broken.length) list.append(h('div.empty-s.err', { text: 'Could not reopen: ' + lib.broken.map(r => r.name).join(', ') }));
   }
@@ -225,14 +226,14 @@
       h('div.rc-author', { text: GB.ut(e.author) }), h('div.rc-title', { text: GB.ut(e.title) }), h('div.rc-time', { text: 'Reading time: ' + GB.fmtDuration(e.timeSpent || 0) + (e.finishedAt ? ' · finished ' + new Date(e.finishedAt).toLocaleDateString() : '') }));
   }
   function renderMine(list) {
-    list.append(h('div.file-add', { onclick: () => GB.addFilesUI() }, img('ic_plus_orange.png'), h('span', { text: 'Add gitabase files (.db, .gitabase)' })));
+    list.append(h('div.file-add', { onclick: () => GB.addFilesUI() }, img('ic_plus_orange.png'), h('span', { text: 'Add book files (.db, .gitabase)' })));
     const files = Array.from(lib.dbs.values());
     if (!files.length) list.append(h('div.help-row', { text: 'Files you add are kept inside this browser (IndexedDB) and are read page by page, so even 190 MB gitabases open instantly.' }));
     for (const D of files) {
       const books = lib.books.filter(B => B.parts.some(p => p.D === D)).map(B => B.title);
       list.append(h('div.file-row', null, ico('db', 'file-ic'), h('div.file-main', null, h('div.file-name', { text: D.name }),
         h('div.file-meta', { text: GB.fmtSize(D.size) + ' · ' + (lib.LANG_NAMES[D.lang] || D.lang) + (D.hasFts ? ' · search index' : '') }), h('div.file-books', { text: GB.ut(books.join(' · ')) })),
-        h('button.file-del', { title: 'Remove from library', onclick: async () => { if (await GB.ui.confirm('Remove gitabase', 'Remove ' + D.name + ' from this browser? Your notes stay.', 'REMOVE')) { await lib.removeDb(D.id); HOME.render(); } } }, ico('trash'))));
+        h('button.file-del', { title: 'Remove from library', onclick: async () => { if (await GB.ui.confirm('Remove book file', 'Remove ' + D.name + ' from this browser? Your notes stay.', 'REMOVE')) { await lib.removeDb(D.id); HOME.render(); } } }, ico('trash'))));
     }
     if (lib.broken && lib.broken.length) list.append(h('div.empty-s.err', { text: 'Could not reopen: ' + lib.broken.map(r => r.name).join(', ') }));
   }
@@ -267,12 +268,12 @@
     const F = [['all', 'All'], ['highl', 'Highlights'], ['quote', 'Quotes'], ['fav', 'Texts']];
     body.append(h('div.filters', null, F.map(([k, t]) => h('button.fchip' + (HOME.favFilter === k ? '.on' : ''), { text: t, onclick: () => setFav(k) }))));
     const want = HOME.favFilter === 'all' ? ['fav', 'quote', 'highl'] : [HOME.favFilter];
-    noteList(body, GB.notes.list.filter(n => want.includes(n.type)), 'Select text and choose +Highlight or +Quote, or tap the garland under a translation to keep it here.');
+    noteList(body, GB.notes.list.filter(n => want.includes(n.type)), 'Select words and choose Highlight or Quote, or tap the garland under a translation, to keep a passage here.');
   }
   function renderNotes(type) {
     const general = type === 'quest' ? HOME.qGeneral : HOME.nGeneral;
     const list = GB.notes.list.filter(n => n.type === type && !!n.general === general);
-    noteList(bodyEl, list, general ? 'Tap + to add a general ' + (type === 'quest' ? 'question' : 'note') + '.' : 'Select text in a verse and choose ' + (type === 'quest' ? '+Question' : '+Comment') + '.');
+    noteList(bodyEl, list, general ? 'Tap + to add a general ' + (type === 'quest' ? 'question' : 'note') + '.' : 'Select text in a verse and choose ' + (type === 'quest' ? 'Question' : 'Comment') + '.');
   }
   // ---------- T: topics ----------
   function topicRows(body, parent) {
@@ -288,7 +289,7 @@
   function topicMenu(anchor, t) {
     GB.ui.menu(anchor, [{ label: 'Rename', icon: 'ic_rename_o.png', onClick: async () => { const n = await GB.ui.prompt('Rename topic', t); if (n && n !== t) { await GB.notes.renameTopic(t, n); refreshAll(); } } },
       { label: 'Add subtopic', icon: 'ic_new_topic.png', onClick: async () => { const n = await GB.ui.prompt('New subtopic of ' + t, ''); if (n) { await GB.notes.addTopic(t + '/' + n); refreshAll(); } } },
-      { label: 'Delete', icon: 'ic_delete_o.png', onClick: async () => { if (await GB.ui.confirm('Delete topic', 'Delete topic "' + t + '"? Notes stay, only the tag is removed.', 'DELETE')) { await GB.notes.deleteTopic(t); refreshAll(); } } }]);
+      { label: 'Delete', icon: 'ic_delete_o.png', onClick: async () => { if (await GB.ui.confirm('Delete topic', 'Delete topic "' + t + '"? Notes stay, only the tag is removed.', 'Delete')) { await GB.notes.deleteTopic(t); refreshAll(); } } }]);
   }
   function refreshAll() { for (const p of L.stack) if (p.refresh) p.refresh(); }
   GB.refreshAll = refreshAll;
@@ -297,7 +298,7 @@
     if (!n) body.append(h('div.help-row', { text: 'Topics are #tags. Add them while writing a note (for example #krsna in the heart) or tap the folder+ icon above.' }));
   }
   GB.topicPage = function (t) {
-    const pg = GB.page({ kind: 'topic', title: 'Bookmark Topics', subtitle: t, actions: [GB.hbtn('ic_new_topic.png', 'Add subtopic', async () => { const n = await GB.ui.prompt('New subtopic of ' + t, ''); if (n) { await GB.notes.addTopic(t + '/' + n); fill(); } })] });
+    const pg = GB.page({ kind: 'topic', title: 'Topics', subtitle: t, actions: [GB.hbtn('ic_new_topic.png', 'Add subtopic', async () => { const n = await GB.ui.prompt('New subtopic of ' + t, ''); if (n) { await GB.notes.addTopic(t + '/' + n); fill(); } })] });
     function fill() { pg.body.innerHTML = ''; topicRows(pg.body, t); noteList(pg.body, GB.notes.inTopic(t, false), 'No notes in this topic yet.'); }
     pg.refresh = fill; fill(); L.push(pg);
   };
@@ -317,7 +318,7 @@
     return rows.map(r => ({ w: r.w, link: r.link, n: r.n }));
   }
   function renderD(body) {
-    const inp = h('input.dict-in', { type: 'search', value: dictQ, placeholder: 'Please enter SANSKRIT word using English letters', autocomplete: 'off', spellcheck: 'false' });
+    const inp = h('input.dict-in', { type: 'search', value: dictQ, placeholder: 'Type a Sanskrit word (Latin letters or Devanagari)', autocomplete: 'off', spellcheck: 'false' });
     const out = h('div.dict-out');
     body.append(h('div.dict-box', null, inp), out);
     const run = GB.debounce(async () => {
@@ -340,7 +341,7 @@
     setTimeout(() => { if (GB.isWide()) inp.focus(); }, 50);
   }
 
-  // ---------- note editor (APK noteedit: OK / Cancel / Open Text, "This is a Question", subject, text, #topics) ----------
+  // ---------- note editor (subject, text, #topics, question switch) ----------
   GB.noteEdit = function (n, ctx) {
     n = Object.assign({ type: 'note', tags: [] }, n);
     const isNew = !n.id;
@@ -358,12 +359,12 @@
     const showQ = n.type === 'note' || n.type === 'quest';
     const body = h('div.ne', null,
       n.ref ? h('div.ne-ref', null, h('span.nc-chip', { text: n.ref.label + ' »' }), n.quote ? h('div.nc-quote', { text: GB.ut(n.quote) }) : null) : null,
-      showQ ? h('label.ne-q', null, isQ, h('span', { text: 'This is a Question' })) : null,
+      showQ ? h('label.ne-q', null, isQ, h('span', { text: 'Mark as question' })) : null,
       subj, txt, h('div.ne-tags', null, chips, tagIn, dl));
     const buttons = [];
-    if (!isNew) buttons.push({ label: 'DELETE', onClick: () => { GB.ui.confirm('Delete', 'Delete this ' + (GB.notes.TYPES[n.type] || 'note').toLowerCase() + '?', 'DELETE').then(async ok => { if (ok) { await GB.notes.remove(n.id); d.close(); afterSave(); } }); return false; } });
-    if (n.ref) buttons.push({ label: 'OPEN TEXT', onClick: () => { setTimeout(() => openNote(n), 10); } });
-    buttons.push({ label: 'CANCEL', value: null }, { label: 'OK', onClick: () => { save(); } });
+    if (!isNew) buttons.push({ label: 'Delete', onClick: () => { GB.ui.confirm('Delete', 'Delete this ' + (GB.notes.TYPES[n.type] || 'note').toLowerCase() + '?', 'Delete').then(async ok => { if (ok) { await GB.notes.remove(n.id); d.close(); afterSave(); } }); return false; } });
+    if (n.ref) buttons.push({ label: 'Open text', onClick: () => { setTimeout(() => openNote(n), 10); } });
+    buttons.push({ label: 'Cancel', value: null }, { label: 'OK', onClick: () => { save(); } });
     const d = GB.ui.dialog({ title: isNew ? (n.type === 'quest' ? 'Add Question' : n.type === 'note' ? 'Add Note' : 'Edit') : 'Edit ' + (GB.notes.TYPES[n.type] || 'note'), body, buttons, cls: 'noteedit' });
     async function save() {
       addTag();
@@ -379,11 +380,11 @@
   GB.doRestore = async file => {
     let obj; try { obj = JSON.parse(await file.text()); } catch (e) { GB.ui.toast('This file is not a notes backup'); return; }
     if (!obj || !Array.isArray(obj.notes)) { GB.ui.toast('This file is not a notes backup'); return; }
-    const mode = await GB.ui.dialog({ title: 'Restore from backup', text: obj.notes.length + ' notes in ' + file.name + '. Merge them with your present notes, or replace your present notes?', buttons: [{ label: 'CANCEL', value: null }, { label: 'REPLACE', value: 'replace' }, { label: 'MERGE', value: 'merge' }] }).result;
+    const mode = await GB.ui.dialog({ title: 'Restore notes', text: obj.notes.length + ' notes in ' + file.name + '. Merge them with your notes, or replace your notes with them?', buttons: [{ label: 'Cancel', value: null }, { label: 'Replace', value: 'replace' }, { label: 'Merge', value: 'merge' }] }).result;
     if (!mode) return;
     if (mode === 'replace') {
-      const w = await GB.ui.prompt('Please enter word \'gopi\' to confirm that your present notes are going to be overwritten', '');
-      if (w == null) return; if (String(w).trim().toLowerCase() !== 'gopi') { GB.ui.toast("You entered the word 'gopi' incorrectly"); return; }
+      const w = await GB.ui.prompt('Type replace to confirm: your current notes will be overwritten', '');
+      if (w == null) return; if (String(w).trim().toLowerCase() !== 'replace') { GB.ui.toast('Not replaced: the word did not match'); return; }
     }
     const n = await GB.notes.restore(obj, mode === 'replace'); GB.ui.toast(n + ' notes restored'); refreshAll();
   };
