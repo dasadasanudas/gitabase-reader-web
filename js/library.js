@@ -377,7 +377,7 @@
         if (r.ok) {
           const cat = await r.json(); lib.hosted = true; lib.catalog = cat;
           for (const f of cat.files || []) {
-            try { await openDb({ id: 'h:' + f.id, name: f.name, size: f.size, kind: 'hosted' }, { base: new URL(f.base, location.href).href, size: f.size, chunkSize: f.chunkSize }); }
+            try { await openDb({ id: 'h:' + f.id, name: f.name, size: f.size, kind: 'hosted' }, { base: new URL(f.base, document.baseURI).href, size: f.size, chunkSize: f.chunkSize }); }
             catch (e) { console.error('hosted file', f.name, e); }
           }
           rebuild(); return;

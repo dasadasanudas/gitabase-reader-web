@@ -2,8 +2,11 @@
 'use strict';
 (function (GB) {
   const { $ } = GB;
+  GB.paths = !!document.querySelector('meta[name="gb-paths"]');
   async function openHash() {
-    const m = decodeURIComponent(location.hash || '').match(/^#\/([^/]+)\/([^/]+)\/(.+)$/); if (!m) return false;
+    let m = decodeURIComponent(location.hash || '').match(/^#\/([^/]+)\/([^/]+)\/(.+)$/);
+    if (!m && GB.paths) { const base = new URL(document.baseURI).pathname, p = decodeURIComponent(location.pathname); if (p.startsWith(base)) m = ('/' + p.slice(base.length)).match(/^\/([^/]+)\/([^/]+)\/(.+?)\/?$/); }
+    if (!m) return false;
     const [, lang, abbr, rest] = m; const nums = rest.split('/').filter(Boolean);
     let B = GB.lib.books.find(b => b.lang === lang && (b.abbr === abbr || b.title === abbr)) || GB.lib.resolveBook(abbr, lang); if (!B) return false;
     const r = await GB.lib.resolve(B.abbr || abbr, nums, lang); if (!r) return false;

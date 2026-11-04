@@ -95,12 +95,25 @@
       draw();
     }
     const chaptersIn = song => B.chapters.filter(c => !st.three || String(c.song) === String(song));
+    // a box only ever holds a number from min to max: a digit that would make it invalid or too big is not typed at all
     function numBox(label, val, max, onSet, min) {
       min = min == null ? 1 : min;
-      const inp = h('input.gv-in', { type: 'number', inputmode: 'numeric', min: String(min), max: String(max), value: String(val), placeholder: label, 'aria-label': label, enterkeyhint: 'go' });
-      const fire = GB.debounce(() => { const v = parseInt(inp.value, 10); if (isNaN(v)) return; const c = Math.max(min, Math.min(max, v)); if (String(c) !== inp.value) inp.value = String(c); onSet(c); }, 380);
-      inp.addEventListener('input', fire); inp.addEventListener('focus', () => inp.select());
-      inp.addEventListener('keydown', e => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); const v = (parseInt(inp.value, 10) || min) + (e.key === 'ArrowUp' ? 1 : -1); inp.value = String(Math.max(min, Math.min(max, v))); fire(); } if (e.key === 'Enter') s.close(); });
+      const inp = h('input.gv-in', { type: 'text', inputmode: 'numeric', pattern: '[0-9]*', autocomplete: 'off', value: String(val), placeholder: label, 'aria-label': label + ' (' + min + ' to ' + max + ')', enterkeyhint: 'go', maxlength: String(String(max).length) });
+      const ok = v => v === '' || (/^\d+$/.test(v) && !(v.length > 1 && v[0] === '0') && !(v === '0' && min > 0) && Number(v) <= max);
+      let last = inp.value;
+      const fire = GB.debounce(() => { const v = parseInt(inp.value, 10); if (!isNaN(v) && v >= min && v <= max) onSet(v); }, 220);
+      inp.addEventListener('beforeinput', e => {
+        if (!e.inputType || !e.inputType.startsWith('insert')) return;
+        const v = inp.value, a = inp.selectionStart, z = inp.selectionEnd, add = e.data != null ? e.data : '';
+        if (!ok(v.slice(0, a) + add + v.slice(z))) e.preventDefault();
+      });
+      inp.addEventListener('input', () => { if (!ok(inp.value)) { inp.value = last; return; } last = inp.value; fire(); });
+      inp.addEventListener('focus', () => inp.select());
+      inp.addEventListener('blur', () => { const v = parseInt(inp.value, 10); if (isNaN(v) || v < min) { inp.value = String(val); last = inp.value; } });
+      inp.addEventListener('keydown', e => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); const v = Math.max(min, Math.min(max, (parseInt(inp.value, 10) || min) + (e.key === 'ArrowUp' ? 1 : -1))); inp.value = String(v); last = inp.value; fire(); }
+        if (e.key === 'Enter') s.close();
+      });
       return h('label.gv-f', null, h('span.gv-l', { text: label }), inp, h('span.gv-max', { text: 'of ' + max }));
     }
     async function jump() {
@@ -213,7 +226,7 @@
     const files = OFF.files(B); const total = files.reduce((a, f) => a + f.size, 0);
     if (OFF.has(B)) { if (!(await GB.ui.confirm('Saved for offline', GB.ut(B.title) + ' is already on this device (' + GB.fmtSize(total) + '). Check it again?', 'Check'))) return; }
     else if (!(await GB.ui.confirm('Save for offline', 'Download ' + GB.ut(B.title) + ' (' + GB.fmtSize(total) + ') to this device? Use Wi-Fi for big books.', 'Download'))) return;
-    const urls = []; for (const f of files) { const n = Math.ceil(f.size / f.chunkSize); const base = new URL(f.base, location.href).href; for (let i = 0; i < n; i++) urls.push(base + String(i).padStart(5, '0') + '.bin'); }
+    const urls = []; for (const f of files) { const n = Math.ceil(f.size / f.chunkSize); const base = new URL(f.base, document.baseURI).href; for (let i = 0; i < n; i++) urls.push(base + String(i).padStart(5, '0') + '.bin'); }
     let done = 0, stop = false, failed = 0;
     const bar = h('i'), txt = h('span.off-t', { text: '0%' });
     const box = h('div.off', null, h('div.off-title', { text: GB.ut(B.title) }), h('div.off-bar', null, bar), h('div.off-row', null, txt, h('button.btn.small', { type: 'button', text: 'Cancel', onclick: () => { stop = true; s.close(); } })));

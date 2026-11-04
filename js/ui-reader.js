@@ -331,7 +331,10 @@
     const t = [lib.label(cur.B, cur.ch.song, cur.ch.ch, cur.row.no), part('#verseSanskrit'), part('#verseTranslit'), part('#verseTransl2'), part('#versePurport')].filter(Boolean).join('\n\n');
     await GB.copyText(t); GB.ui.toast('Text copied');
   }
-  function deepLink() { const { B, ch, row } = cur; return location.href.split('#')[0] + '#/' + encodeURIComponent(B.lang) + '/' + encodeURIComponent(B.abbr || B.title) + '/' + (B.hasSongs ? ch.song + '/' : '') + ch.ch + '/' + encodeURIComponent(row.no); }
+  function deepLink() {
+    const { B, ch, row } = cur; const tail = encodeURIComponent(B.lang) + '/' + encodeURIComponent(B.abbr || B.title) + '/' + (B.hasSongs ? ch.song + '/' : '') + ch.ch + '/' + encodeURIComponent(row.no);
+    return GB.paths ? new URL(tail, document.baseURI).href : location.href.split('#')[0] + '#/' + tail;
+  }
   function setHash() { try { history.replaceState(history.state, '', deepLink()); } catch (e) {} }
   R.deepLink = () => cur ? deepLink() : '';
   // ---------- drawer (chapters) ----------

@@ -20,15 +20,18 @@
     const place = anim => {
       const on = el.querySelector(':scope > .on'); if (!on || !el.isConnected) return false;
       const box = { x: on.offsetLeft, w: on.offsetWidth, y: on.offsetTop, hgt: on.offsetHeight }; if (!box.w) return false;
-      const last = PILL.get(key);
+      // glide only when the user picked another option; a re-render (theme switch, resize) just places it
+      const idx = Array.prototype.indexOf.call(el.children, on); const last = PILL.get(key);
       const set = b => { p.style.width = b.w + 'px'; p.style.height = b.hgt + 'px'; p.style.transform = 'translate(' + b.x + 'px,' + b.y + 'px)'; };
-      if (anim && last && (last.x !== box.x || last.w !== box.w)) { p.style.transition = 'none'; set(last); p.getBoundingClientRect(); p.style.transition = ''; requestAnimationFrame(() => set(box)); }
-      else set(box);
-      PILL.set(key, box); el.classList.add('pill-on'); return true;
+      if (anim && last && last.idx !== idx && last.w) {
+        const from = { x: last.x, y: box.y, w: last.w, hgt: box.hgt };
+        p.style.transition = 'none'; set(from); p.getBoundingClientRect(); p.style.transition = ''; requestAnimationFrame(() => set(box));
+      } else { p.style.transition = 'none'; set(box); p.getBoundingClientRect(); p.style.transition = ''; }
+      PILL.set(key, Object.assign({ idx }, box)); el.classList.add('pill-on'); return true;
     };
     let tries = 0; const go = () => { if (!place(true) && ++tries < 6) requestAnimationFrame(go); };
     requestAnimationFrame(go);
-    if (window.ResizeObserver) new ResizeObserver(() => place(false)).observe(el);
+    if (window.ResizeObserver) new ResizeObserver(() => { if (el.classList.contains('pill-on')) place(false); }).observe(el);
     return el;
   };
 
