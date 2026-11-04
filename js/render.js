@@ -59,7 +59,8 @@
     const d = frag(html); const out = h('table.wbwTable');
     const parts = d.innerHTML.replace(/<\/?p[^>]*>/gi, ' ').split(/;\s*/);
     for (const p of parts) {
-      const m = p.split(/\s*(?:&#8212;|—|&mdash;|--|&#8211;&#8211;|–)\s*/); if (m.length < 2 || !m[0].replace(/<[^>]+>/g, '').trim()) continue;
+      // word — meaning; the BG 1972 file writes "--", Sam's English file " - "
+      const m = p.split(/\s*(?:&#8212;|—|&mdash;|--|&#8211;&#8211;|–)\s*|\s+-\s+/); if (m.length < 2 || !m[0].replace(/<[^>]+>/g, '').trim()) continue;
       const tr = h('tr', null, h('td.w', { html: m[0], 'data-act': 'word' }), h('td.m', { html: m.slice(1).join(' — ') }));
       out.append(tr);
     }
