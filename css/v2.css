@@ -239,3 +239,99 @@ body.night .canto-mark, body.night .vol-title { color: var(--book-title); }
 body.night .bk, body.night .canto { background: color-mix(in oklab, var(--chip-b) 8%, var(--card)); border-color: color-mix(in oklab, var(--chip-b) 14%, transparent); box-shadow: none; }
 .vol { background: transparent; padding-left: 0; padding-right: 0; }
 .canto-sub { color: var(--t2); opacity: 1; }
+
+/* ================= breadcrumb (reader + chapter page): tap a crumb to step back there ================= */
+.crumbs { display: flex; align-items: center; gap: 1px; height: 34px; padding: 0 8px; overflow-x: auto; white-space: nowrap; scrollbar-width: none; font: 500 13.5px/1 var(--ui); color: var(--t2); background: var(--home); box-shadow: inset 0 -1px 0 var(--line); flex: none; }
+.crumbs::-webkit-scrollbar { display: none; }
+.rd-crumbs .crumbs { background: var(--text-bg); }
+.cr { flex: none; padding: 6px 8px; border-radius: 999px; color: inherit; font: inherit; }
+button.cr { cursor: pointer; } button.cr:hover { background: var(--hover); color: var(--t1); }
+.cr.cur { color: var(--accent); font-weight: 650; }
+.cr-sep { flex: none; opacity: .45; padding: 0 1px; font-size: 15px; }
+.rd.nohead .rd-crumbs { display: none; }
+.under-wrap { flex: none; display: flex; flex-direction: column; }
+.rd-goto { }
+
+/* ================= phones: tabs on every screen + the now-reading bar above them ================= */
+html:not(.desk) body:not(.reading) #rail { display: flex; }
+html:not(.desk) body:not(.reading) #left { bottom: calc(var(--tabh) + env(safe-area-inset-bottom, 0px)); }
+html:not(.desk) body.has-now:not(.reading) #left { bottom: calc(var(--tabh) + 64px + env(safe-area-inset-bottom, 0px)); }
+#nowbar { display: none; }
+html:not(.desk) #nowbar.on { position: fixed; z-index: 4; left: 8px; right: 8px; bottom: calc(var(--tabh) + 6px + env(safe-area-inset-bottom, 0px)); height: 54px; display: flex; align-items: center; gap: 2px; padding: 0 4px 0 6px;
+  border-radius: 14px; background: var(--tab-bar); color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.22); }
+html.lay-m #nowbar.on { left: max(8px, calc(50% - 232px)); right: max(8px, calc(50% - 232px)); }
+html:not(.desk) body.reading #nowbar { transform: translateY(140%); opacity: 0; pointer-events: none; }
+.nb-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; height: 100%; padding: 0 4px; text-align: left; color: inherit; }
+.nb-cover { flex: none; width: 36px; height: 40px; border-radius: 6px; display: grid; place-items: center; background: var(--home); color: var(--accent); font: 700 11px/1 var(--ui); letter-spacing: .3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.nb-txt { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.nb-ref { font: 13px/1.2 var(--ui); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .nb-ref b { font-weight: 650; } .nb-ref span { opacity: .8; }
+.nb-prev { font: 12.5px/1.25 var(--ui); opacity: .72; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nb-b { flex: none; width: 40px; height: 44px; display: grid; place-items: center; border-radius: 10px; color: #fff; }
+.nb-b svg { width: 22px; height: 22px; } .nb-b:active { background: rgba(255,255,255,.14); }
+
+/* ================= PC: sidebar collapse ================= */
+.side-tog { display: none; }
+html.desk .side-tog { display: inline-grid; place-items: center; }
+html.desk .side-tog svg { width: 20px; height: 20px; }
+html.desk .rail-side { margin-top: auto; margin-bottom: 10px; width: 40px; height: 40px; border-radius: 10px; color: var(--tab-ico); }
+html.desk .rail-side:hover { background: rgba(255,255,255,.1); color: #fff; }
+html.desk .rd-head > .side-tog { margin-left: -6px; margin-right: 2px; }
+html.desk:not(.side-off) .rd-head > .side-tog { display: none; }
+html.desk.side-off #app { grid-template-columns: 60px 0px minmax(0, 1fr); }
+html.desk.side-off #sideGrip { display: none; }
+html.desk.side-off #left { box-shadow: none; }
+html.desk.side-off .rail-side { background: rgba(255,255,255,.12); color: #fff; }
+
+/* ================= micro animations (all off when the system asks for reduced motion) ================= */
+@media (prefers-reduced-motion: no-preference) {
+  html.desk #app { transition: grid-template-columns .26s cubic-bezier(.3,.7,.2,1); }
+  html.desk.side-drag #app { transition: none; }
+  html.desk #left > .page { transition: opacity .2s; } html.desk.side-off #left > .page { opacity: 0; }
+
+  /* press + hover feedback */
+  .hdr-btn, .hdr-logo, .tab, .chip2, .seg-b, .cr, .nb-b, .nb-main, .btn, .s-goto, .s-ref, .s-recent, .rp-more, .rp-sb, .adot, .vo-b, .side-tog, .folder, .bk, .canto, .vol, .chcard, .song-row, .txrow, .cont-card, .pm-item, .dlg-btn, .wchip {
+    transition: transform .14s cubic-bezier(.3,.7,.4,1), background-color .16s, color .16s, box-shadow .16s, opacity .16s; }
+  .hdr-btn:active, .hdr-logo:active, .chip2:active, .seg-b:active, .cr:active, .nb-b:active, .btn:active, .rp-sb:active, .adot:active, .vo-b:active, .side-tog:active, .dlg-btn:active, .wchip:active { transform: scale(.92); }
+  .tab:active { transform: scale(.95); }
+  .bk:active, .canto:active, .vol:active, .chcard:active, .song-row:active, .cont-card:active, .folder:active, .s-goto:active, .s-ref:active, .rp-more:active, .nb-main:active { transform: scale(.985); }
+  .txrow:active { background-color: var(--wash); }
+
+  /* pages: push slides in, pop slides out */
+  html.desk .page.in:not(.home):not(.dm-page) { animation: gb-pagein .24s cubic-bezier(.2,.8,.2,1); }
+  html:not(.desk) .page.in:not(.home) { animation: gb-pagein-m .26s cubic-bezier(.2,.8,.2,1); }
+  .page.out { animation: gb-pageout .2s cubic-bezier(.4,0,.8,.4) forwards; z-index: 2; pointer-events: none; }
+  html:not(.desk) .page.out { animation-name: gb-pageout-m; }
+  /* tab switch: content rises in, first rows a beat apart */
+  .home-body.tab-in > * { animation: gb-rise .26s cubic-bezier(.2,.8,.2,1) both; }
+  .home-body.tab-in > *:nth-child(2) { animation-delay: .03s; } .home-body.tab-in > *:nth-child(3) { animation-delay: .06s; } .home-body.tab-in > *:nth-child(n+4) { animation-delay: .09s; }
+  #rail .tab .tab-ico { transition: transform .2s cubic-bezier(.3,.7,.4,1.4); } #rail .tab.on .tab-ico { transform: translateY(-1px) scale(1.06); }
+  /* a verse opened from a list, go to verse or the bar fades up */
+  .rd-scroll > .verse.v-in { animation: gb-rise .28s cubic-bezier(.2,.8,.2,1); }
+  .rd-crumbs .crumbs .cr.cur { animation: gb-fade .3s ease; }
+  /* menus, dialogs, sheets */
+  .popmenu { animation: gb-pop .16s cubic-bezier(.2,.8,.2,1); transform-origin: top right; }
+  .dlg { animation: gb-pop .2s cubic-bezier(.2,.8,.2,1); }
+  .dlg-scrim, .menu-scrim { animation: gb-fade .18s ease; }
+  /* word for word and the second purport unfold */
+  .wbw-box:not([hidden]) { animation: gb-unfold .24s cubic-bezier(.2,.8,.2,1); }
+  details.pp2[open] > :not(summary) { animation: gb-unfold .24s cubic-bezier(.2,.8,.2,1); }
+  .alt:not(.alt-wait) { animation: gb-fade .25s ease; }
+  /* chips and switches */
+  .sw2.on i { transition-timing-function: cubic-bezier(.3,.7,.4,1.4); }
+  /* now-reading bar */
+  html:not(.desk) #nowbar.on { transition: transform .28s cubic-bezier(.2,.8,.2,1), opacity .2s; animation: gb-barin .32s cubic-bezier(.2,.8,.2,1); }
+  #nowbar.step-r .nb-txt { animation: gb-step-r .24s cubic-bezier(.2,.8,.2,1); } #nowbar.step-l .nb-txt { animation: gb-step-l .24s cubic-bezier(.2,.8,.2,1); }
+  .toast { transition: transform .28s cubic-bezier(.2,.8,.2,1.2), opacity .2s; }
+}
+@keyframes gb-pagein { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes gb-pagein-m { from { transform: translateX(32%); opacity: .3; } to { transform: none; opacity: 1; } }
+@keyframes gb-pageout { to { opacity: 0; transform: translateX(12px); } }
+@keyframes gb-pageout-m { to { opacity: 0; transform: translateX(30%); } }
+@keyframes gb-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes gb-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes gb-pop { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes gb-unfold { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes gb-tick { 0% { transform: scale(.94); } 60% { transform: scale(1.04); } 100% { transform: none; } }
+@keyframes gb-barin { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes gb-step-r { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+@keyframes gb-step-l { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
