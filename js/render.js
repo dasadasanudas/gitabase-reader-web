@@ -65,6 +65,58 @@
     }
     return out.rows.length ? out : null;
   }
+  // ---------- reading layouts: how the parts of one verse sit on the page ----------
+  // column: everything in one centred column (Vedabase, the Gitabase app)
+  // study: the verse on the left, its meaning on the right, on wide screens (Sefaria's side-by-side); phones get the column
+  // words: each word with its meaning under it, in reading order (Quran.com's word by word "below word")
+  // meaning: the translation leads, the verse sits in a card under it (Quran.com translation view, Bible apps)
+  // lines: Devanagari line, then its transliteration, line by line, set large for chanting
+  const LAYOUTS = ['column', 'study', 'words', 'meaning', 'lines'];
+  R.LAYOUTS = LAYOUTS;
+  R.LAYOUT_NAMES = { column: 'Column', study: 'Study', words: 'Words', meaning: 'Meaning', lines: 'Lines' };
+  R.layout = () => { const q = (location.search.match(/[?&]rl=(\w+)/) || [])[1]; const v = q || GB.prefs.readLayout; return LAYOUTS.includes(v) ? v : 'column'; };
+  const kids = (root, sel) => Array.from(root.children).filter(c => c.matches(sel));
+  const linesOf = el => { const c = el.cloneNode(true); c.querySelectorAll('br').forEach(b => b.replaceWith('\n')); c.querySelectorAll('p,div').forEach(b => b.append('\n'));
+    return c.textContent.split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean); };
+  function arrange(root, t, o) {
+    const L = R.layout(); root.classList.add('rl-' + L); if (L === 'column') return;
+    const head = root.querySelector('.vhead');
+    const verseSel = '.verseSanskrit, .verseTranslit, .wbw-fold, .wbw-box', meanSel = '.verseTransl2, .pair, .pp-rule, .versePurport, details.pp2';
+    if (L === 'study') {
+      const l = h('div.st-l'), r = h('div.st-r'); kids(root, verseSel).forEach(x => l.append(x)); kids(root, meanSel).forEach(x => r.append(x));
+      if (l.children.length && r.children.length) head.after(h('div.st-grid', null, l, r)); else { head.after(...l.childNodes, ...r.childNodes); }
+    } else if (L === 'meaning') {
+      const tr = kids(root, '.verseTransl2, .pair').filter(x => x.matches('.verseTransl2') || x.querySelector('.verseTransl2'));
+      const card = h('div.mf-card'); kids(root, verseSel).forEach(x => card.append(x));
+      let at = head; tr.forEach(x => { at.after(x); at = x; }); if (card.children.length) at.after(card);
+    } else if (L === 'words') {
+      const src = !empty(t.transl1) ? t.transl1 : null; const tbl = src ? wbwTable(src) : null; const box = root.querySelector('.wbw-box');
+      if (tbl && box) {
+        const flow = h('div.ilw');
+        for (const tr of Array.from(tbl.rows)) flow.append(h('span.ilw-t', null, h('span.ilw-w' + (/[\u0900-\u097F]/.test(tr.cells[0].textContent) ? '.skt' : ''), { html: tr.cells[0].innerHTML, 'data-act': 'word' }), h('span.ilw-m', { html: tr.cells[1].innerHTML })));
+        typo(flow); box.before(flow); box.hidden = true; box.classList.add('ilw-src');
+        const fold = root.querySelector('.wbw-fold'); if (fold) fold.remove();
+        const tl = root.querySelector('.verseTranslit'); if (tl) tl.classList.add('ilw-hide');
+      }
+    } else if (L === 'lines') {
+      const dev = root.querySelector('.verseSanskrit'), tl = root.querySelector('.verseTranslit');
+      const D = dev ? linesOf(dev) : [], T = tl ? linesOf(tl) : [];
+      if (!D.length && !T.length) return;
+      const rc = h('div.rc'); const sp = /(उवाच|ऊचुः|ऊचु:|uvāca|ūcuḥ)/;
+      let groups = null;
+      if (D.length && T.length) {
+        const spk = D.filter(x => sp.test(x) && x.length < 40).length; const rest = D.length - spk, restT = T.length - spk;
+        if (rest > 0 && restT % rest === 0) { const per = restT / rest; groups = []; let k = 0; for (const d of D) { const n = sp.test(d) && d.length < 40 ? 1 : per; groups.push([d, T.slice(k, k + n)]); k += n; } }
+      }
+      // keep the closing "॥ 2 ॥" glued to the last word
+      const devLine = d => { const m = d.match(/^(.*?)\s*(।|॥\s*[०-९\d.]*\s*॥?|॥)\s*$/); const el = h('div.rc-d.skt', { lang: 'sa' });
+        if (!m) { el.textContent = d; return el; } const words = m[1].split(' '); const last = words.pop();
+        el.append(words.length ? words.join(' ') + ' ' : '', h('span.rc-nw', { text: last + '\u00a0' + m[2].replace(/\s+/g, '\u2009') })); return el; };
+      if (groups) groups.forEach(([d, ts]) => rc.append(h('div.rc-l', null, devLine(d), h('div.rc-t', { text: ts.join('  ') }))));
+      else { D.forEach(d => rc.append(h('div.rc-l', null, devLine(d)))); if (T.length) rc.append(h('div.rc-l.rc-only', null, ...T.map(x => h('div.rc-t', { text: x })))); }
+      (dev || tl).before(rc); if (dev) dev.classList.add('rc-src'); if (tl) tl.classList.add('rc-src');
+    }
+  }
   // Sanskrit headwords inside a Devanagari word-by-word block
   function markWbwHeads(el) {
     if (!/[\u0900-\u097F]/.test(el.textContent)) return;
@@ -137,6 +189,7 @@
       }
     }
     if (!any) root.append(h('div.verse-none', { text: 'Every part of the verse is hidden. Open Aa to choose what to show.' }));
+    else arrange(root, t, o);
     root.append(h('div#divBottomPaginationFooter'));
     if (o.notes && o.notes.length) R.applyNotes(root, o.notes);
     if (o.needles && o.needles.length) R.highlight(root, o.needles);

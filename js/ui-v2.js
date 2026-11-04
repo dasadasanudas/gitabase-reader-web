@@ -28,6 +28,16 @@
   GB.setAccent = function (k) { GB.setPref('accent', k); GB.applyAccent(); GB.home.render(); GB.reader.rerender(); GB.refreshAll(); };
   const accentDots = () => h('div.accents', null, Object.values(GB.ACCENTS).map(A => h('button.adot' + (GB.prefs.accent === A.key ? '.on' : ''), { type: 'button', title: A.name, 'aria-label': A.name, style: { '--c': A.day, '--cn': A.night }, onclick: () => { GB.setAccent(A.key); redrawPanel(); } })));
 
+  // little page sketches for the layout picker (verse lines dark, meaning lines light)
+  const RLS = b => '<svg viewBox="0 0 40 30" aria-hidden="true">' + b + '</svg>';
+  const ln = (x, y, w, c) => `<rect x="${x}" y="${y}" width="${w}" height="2.2" rx="1.1" class="${c || 'k'}"/>`;
+  const RL_IC = {
+    column: RLS(ln(12, 4, 16) + ln(10, 8, 20) + ln(5, 14, 30, 'm') + ln(5, 18, 30, 'm') + ln(5, 22, 26, 'm') + ln(5, 26, 28, 'm')),
+    study: RLS(ln(3, 5, 14) + ln(3, 9, 14) + ln(3, 13, 11) + ln(21, 5, 16, 'm') + ln(21, 9, 16, 'm') + ln(21, 13, 16, 'm') + ln(21, 17, 16, 'm') + ln(21, 21, 12, 'm') + '<rect x="19" y="4" width=".8" height="22" class="r"/>'),
+    words: RLS(ln(4, 5, 8) + ln(14, 5, 10) + ln(26, 5, 9) + ln(4, 8.5, 7, 'm') + ln(14, 8.5, 8, 'm') + ln(26, 8.5, 7, 'm') + ln(4, 14, 10) + ln(16, 14, 8) + ln(4, 17.5, 8, 'm') + ln(16, 17.5, 6, 'm') + ln(4, 24, 32, 'm')),
+    meaning: RLS(ln(4, 4, 32, 'b') + ln(4, 8.5, 30, 'b') + ln(4, 13, 22, 'b') + '<rect x="4" y="18" width="32" height="9" rx="2" class="c"/>' + ln(10, 20.5, 20) + ln(12, 24, 16)),
+    lines: RLS(ln(8, 4, 24) + ln(10, 7.5, 20, 'm') + ln(8, 12.5, 24) + ln(10, 16, 20, 'm') + ln(8, 21, 24) + ln(10, 24.5, 20, 'm'))
+  };
   // ================= reading panel (Aa) =================
   let panel = null;
   function redrawPanel() { if (panel) panel.fill(); }
@@ -41,6 +51,12 @@
       const P = GB.prefs, cur = R.current(), B = cur && cur.B, verseBook = !cur || !R.isPaged();
       const m = GB.parts.mode(); box.innerHTML = '';
       if (verseBook) box.append(h('div.rp-row', null, seg([['verse', 'Verse by verse'], ['cont', 'Continuous']], P.readMode, v => { if (v !== P.readMode) { GB.setPref('readMode', v); apply(true); } }, 'wide')));
+      if (verseBook && GB.render.LAYOUTS) {
+        const curL = GB.render.layout();
+        box.append(h('div.rp-sec', null, h('div.rp-h', { text: 'Layout' }), h('div.rl-pick', { role: 'radiogroup', 'aria-label': 'Verse layout' }, GB.render.LAYOUTS.map(k =>
+          h('button.rl-b' + (k === curL ? '.on' : ''), { type: 'button', role: 'radio', 'aria-checked': k === curL ? 'true' : 'false', onclick: () => { if (k !== curL) { GB.setPref('readLayout', k); apply(); } } },
+            h('span.rl-ic', { html: RL_IC[k] }), h('span.rl-n', { text: GB.render.LAYOUT_NAMES[k] }))))));
+      }
       const pre = GB.parts.presetOf(m);
       box.append(h('div.rp-sec', null, h('div.rp-h', { text: m === 'cont' ? 'Show while reading continuously' : 'Show' }),
         h('div.rp-presets', null, [['full', 'Full'], ['story', 'Story'], ['recite', 'Recite']].map(([k, t]) => h('button.chip2' + (pre === k ? '.on' : ''), { type: 'button', onclick: () => { GB.parts.preset(m, k); apply(); } }, t))),
