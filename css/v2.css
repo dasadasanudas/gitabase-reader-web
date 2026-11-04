@@ -335,3 +335,49 @@ html.desk.side-off .rail-side { background: rgba(255,255,255,.12); color: #fff; 
 @keyframes gb-barin { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes gb-step-r { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
 @keyframes gb-step-l { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+
+/* ================= reading layouts (Aa > Layout) ================= */
+.rl-pick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.rl-b { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 2px 7px; border-radius: 12px; background: var(--wash); color: var(--t2); font: 500 12px/1 var(--ui); box-shadow: inset 0 0 0 1px transparent; }
+.rl-b.on { background: color-mix(in oklab, var(--accent) 12%, var(--sheet-bg, #fff)); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); font-weight: 650; }
+.rl-ic svg { width: 40px; height: 30px; display: block; }
+.rl-ic .k { fill: currentColor; opacity: .85; } .rl-ic .m { fill: currentColor; opacity: .32; } .rl-ic .b { fill: currentColor; opacity: .7; } .rl-ic .r { fill: currentColor; opacity: .3; } .rl-ic .c { fill: currentColor; opacity: .12; }
+
+/* study: verse left (stays put while the purport scrolls), meaning right; one column on narrow panes */
+.verse.rl-study { max-width: 1240px; }
+.rl-study .st-grid { display: block; }
+@container rdpane (min-width: 860px) {
+  .rl-study .st-grid { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 0 44px; align-items: start; }
+  .rl-study .st-l { position: sticky; top: 8px; max-height: calc(100vh - 140px); overflow-y: auto; scrollbar-width: none; padding-right: 4px; }
+  .rl-study .st-l .verseSanskrit, .rl-study .st-l .verseTranslit { text-align: left !important; }
+  .rl-study .st-l .verseSanskrit.dev { text-align: left !important; }
+  .rl-study .st-r { border-left: 1px solid var(--line); padding-left: 32px; }
+  .rl-study .st-r .pp-rule { margin-top: 18px; }
+}
+.rd-scroll, .rd-cont { container-type: inline-size; container-name: rdpane; }
+
+/* words: every word with its meaning under it */
+.ilw { display: flex; flex-wrap: wrap; gap: 10px 8px; justify-content: center; margin: 4px 0 20px; }
+.ilw-t { display: inline-flex; flex-direction: column; align-items: center; max-width: 13em; padding: 6px 10px 7px; border-radius: 10px; background: color-mix(in oklab, var(--translit, #8a5a1c) 7%, transparent); text-align: center; }
+.ilw-w { font-family: Diakritics_i, Diakritics, var(--verse); color: var(--translit); font-size: 1.04em; line-height: 1.25; }
+.ilw-w.skt { font-family: 'Tiro Devanagari Sanskrit', 'Noto Serif Devanagari', serif; font-style: normal; }
+.ilw-w a { color: inherit !important; border: 0 !important; }
+.ilw-m { font: .8em/1.3 var(--ui); color: var(--t2); margin-top: 3px; }
+.ilw-m .dev, .ilw-m:lang(hi) { font-family: 'Tiro Devanagari Hindi', 'Noto Serif Devanagari', serif; }
+.ilw-hide { display: none; }
+
+/* meaning: the translation leads, the verse sits in a card under it */
+.rl-meaning > .verseTransl2, .rl-meaning > .pair .verseTransl2 { font-size: 1.14em; line-height: 1.45; border-left: 0; padding-left: 0; font-weight: 600; margin: 4px 0 16px; }
+.rl-meaning > .verseTransl2.dev { line-height: 1.7; }
+.mf-card { margin: 4px 0 18px; padding: 14px 16px 6px; border-radius: 14px; background: color-mix(in oklab, var(--accent) 6%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent); font-size: .9em; }
+.mf-card .verseSanskrit, .mf-card .verseTranslit { margin-bottom: 8px; }
+
+/* lines: Devanagari line, its transliteration under it */
+.rc { margin: 6px 0 18px; display: flex; flex-direction: column; gap: 14px; text-align: center; }
+.rc-d { font: 1.16em/1.55 'Tiro Devanagari Sanskrit', 'Noto Serif Devanagari', serif; color: var(--skt); }
+body:not(.night) .rc-d { color: #303a49; }
+.rc-t { font-family: Diakritics_i, Diakritics, var(--verse); color: var(--translit); font-size: 1.02em; line-height: 1.4; margin-top: 2px; }
+.rc-only { gap: 2px; display: flex; flex-direction: column; }
+.rc-src { display: none !important; }
+.rc-nw { white-space: nowrap; }
+@container rdpane (max-width: 520px) { .rc-d { font-size: 1.06em; } .rc { gap: 12px; } }
