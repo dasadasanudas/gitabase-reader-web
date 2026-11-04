@@ -213,8 +213,6 @@ body.night .adot { background: var(--cn); }
 
 .ncard .nc-quote { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 /* phones: the gold mark of the open tab sits above the icon, clear of the label */
-@media (max-width: 899px) { html:not(.lay-d) #rail .tab.on::before { top: 4px; bottom: auto; } }
-html.lay-m #rail .tab.on::before { top: 4px; bottom: auto; }
 /* second language still loading (first use of that edition) */
 .alt-wait{display:flex;align-items:center;gap:8px;margin:4px 0 10px;font:13px/1.4 var(--ui-font,Roboto,sans-serif);color:var(--muted,#7a7468)}
 .alt-wait i{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent;animation:altspin .8s linear infinite;opacity:.7}
@@ -361,3 +359,12 @@ html.desk body.night .subtabs.has-pill > .pill { background: color-mix(in oklab,
   .has-pill > .pill { transition: transform .32s cubic-bezier(.3,.8,.25,1.08), width .32s cubic-bezier(.3,.8,.25,1), opacity .15s; }
 }
 .gv-books { display: flex; flex-direction: column; gap: 8px; }
+/* the highlight is measured inside its own control */
+html .has-pill, html.desk .subtabs.has-pill, html.desk .seg.has-pill { position: relative !important; }
+@media (prefers-reduced-motion: no-preference) {
+  .has-pill > .pill { transition: transform .22s cubic-bezier(.2,.7,.2,1), width .22s cubic-bezier(.2,.7,.2,1), opacity .12s !important; }
+}
+/* phone tabs: the gold line sits under the open tab */
+@media (max-width: 899px) { html:not(.lay-d) #rail .tab.on::before { top: auto !important; bottom: -4px !important; } }
+html.lay-m #rail .tab.on::before { top: auto !important; bottom: -4px !important; }
+.gv-in { font-variant-numeric: tabular-nums; }
