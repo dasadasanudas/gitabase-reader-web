@@ -286,8 +286,9 @@
   const ap = GB.applyPrefs; GB.applyPrefs = function () { ap(); GB.applyAccent(); };
 
   // ================= breadcrumb: Library › book › canto › chapter › verse; every crumb but the last steps back there =================
-  const songName = (B, song) => { const so = (B.songs || []).find(x => String(x.song) === String(song)); return so && so.name && !/^\d+$/.test(so.name) && GB.ut(so.name).length <= 14 ? GB.ut(so.name) : (B.lang === 'hin' ? 'स्कन्ध ' : 'Canto ') + song; };
-  const bookShort = B => B.abbr && B.abbr.length <= 4 && GB.canGoto(B) ? B.abbr : (GB.ut(B.title).length > 22 ? GB.ut(B.title).slice(0, 20) + '…' : GB.ut(B.title));
+  const songName = (B, song) => GB.songInfo(B, song).short;
+  const bookShort = B => B.abbr && B.abbr.length <= 4 && GB.canGoto(B) ? B.abbr : GB.bookShort(B);
+  const clip = (t, n) => { t = GB.ut(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
   GB.navTo = async function (lvl, B, song, ch, i) {
     if (!GB.isWide() && document.body.classList.contains('reading')) GB.reader.close();
     if (GB.desk && GB.desk.collapsed()) GB.desk.expand();
@@ -301,8 +302,8 @@
     const songOn = B.hasSongs && ch && ch.song != null && String(ch.song) !== '' && String(ch.song) !== 'null';
     const items = [['Library', () => GB.navTo('lib')], [bookShort(B), () => GB.navTo('book', B)]];
     if (songOn) items.push([songName(B, ch.song), () => GB.navTo('song', B, String(ch.song))]);
-    if (ch) items.push([Number(ch.ch) === 0 ? GB.ut(ch.title || 'Intro').slice(0, 18) : (B.lang === 'hin' ? 'अध्याय ' : 'Ch ') + ch.ch, at === 'verse' ? () => GB.navTo('chapter', B, String(ch.song), ch, GB.reader.current() ? GB.reader.current().i : null) : null]);
-    if (at === 'verse' && row) items.push([lib.label(B, ch.song, ch.ch, row.no).split(' ').pop(), null]);
+    if (ch) items.push([Number(ch.ch) === 0 || !GB.numbered(B) ? clip(ch.title || 'Intro', 18) : (B.lang === 'hin' ? 'अध्याय ' : 'Ch ') + ch.ch, at === 'verse' ? () => GB.navTo('chapter', B, String(ch.song), ch, GB.reader.current() ? GB.reader.current().i : null) : null]);
+    if (at === 'verse' && row) items.push([GB.numbered(B) ? lib.label(B, ch.song, ch.ch, row.no).split(' ').pop() : clip(row.preview, 22), null]);
     items.forEach(([t, go], k) => {
       if (k) nav.append(h('span.cr-sep', { 'aria-hidden': 'true', text: '›' }));
       const last = k === items.length - 1;
@@ -341,7 +342,7 @@
     nbEl.append(
       h('button.nb-main', { type: 'button', title: 'Open the reader', onclick: () => GB.reader.openSaved(B, lastEntry()) },
         h('span.nb-cover', { text: (B.abbr || GB.ut(B.title).slice(0, 2)).slice(0, 3) }),
-        h('span.nb-txt', null, h('span.nb-ref', null, h('b', { text: e.label }), where ? h('span', { text: ' · ' + where }) : null), h('span.nb-prev' + (/[\u0900-\u097F]/.test(e.preview || '') ? '.devui' : ''), { text: GB.ut(e.preview || '').slice(0, 120) }))),
+        h('span.nb-txt', null, h('span.nb-ref', null, h('b', { text: GB.numbered(B) ? e.label : GB.bookShort(B) }), where ? h('span', { text: ' · ' + where }) : null), h('span.nb-prev' + (/[\u0900-\u097F]/.test(e.preview || '') ? '.devui' : ''), { text: GB.ut(e.preview || '').slice(0, 120) }))),
       h('button.nb-b', { type: 'button', title: 'Previous verse', 'aria-label': 'Previous verse', onclick: () => nbStep(-1), html: GB.icons.svg('chevL') || '‹' }),
       h('button.nb-b', { type: 'button', title: 'Next verse', 'aria-label': 'Next verse', onclick: () => nbStep(1), html: GB.icons.svg('chevR') || '›' }));
   };

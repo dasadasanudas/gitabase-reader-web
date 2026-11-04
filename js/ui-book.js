@@ -59,24 +59,25 @@
     if (B.hasSongs && st.song == null) {
       for (const s of B.songs) {
         const chs = lib.songChapters(B, s.song); const notes = GB.notes.forBook(B).filter(n => n.ref.song === s.song);
+        const si = GB.songInfo(B, s);
         body.append(h('div.song-row', { onclick: () => { st.song = s.song; pg.refresh(); } },
-          h('div.song-sub', { text: GB.ut(s.subtitle || ((B.lang === 'eng' ? 'Canto ' : '') + s.song)) }),
-          h('div.song-title' + devCls(s.name), { text: GB.ut(s.name || 'Canto ' + s.song) }),
-          h('div.song-meta', { text: chs.length + ' chapters' + (s.size ? ' · ' + Math.round(s.size / PAGE_CHARS) + ' pgs' : '') }),
+          si.sub ? h('div.song-sub', { text: si.sub }) : null,
+          h('div.song-title' + devCls(s.name), { text: si.title }),
+          h('div.song-meta', { text: (si.count || (chs.length + (chs.length === 1 ? ' chapter' : ' chapters'))) + (s.size ? ' · ' + Math.round(s.size / PAGE_CHARS) + ' pgs' : '') }),
           noteIcons(notes), rd && rd.song === s.song ? h('div.song-mark', null, h('span', { text: rd.label.split(' ').pop() }), img(GB.prefs.night ? 'bookmark_open_dark.png' : 'bookmark_open.png')) : null));
       }
       return;
     }
     if (B.hasSongs) {
       const s = B.songs.find(x => x.song === st.song) || {};
-      body.append(h('div.allsongs', null, h('button.link-back', { onclick: () => { st.song = null; pg.refresh(); } }, GB.ico('back'), h('span', { text: 'All cantos' })),
-        h('span.cur-song' + devCls(s.name), { text: GB.ut(s.name || ('Canto ' + st.song)) })));
+      body.append(h('div.allsongs', null, h('button.link-back', { onclick: () => { st.song = null; pg.refresh(); } }, GB.ico('back'), h('span', { text: GB.songInfo(B, st.song).all })),
+        h('span.cur-song' + devCls(s.name), { text: GB.songInfo(B, st.song).title })));
     }
     const grid = h('div.chgrid' + (GB.prefs.chapters2col ? '.two' : ''));
     for (const ch of lib.songChapters(B, B.hasSongs ? st.song : null)) {
       const pgs = Math.max(1, Math.round(ch.size / PAGE_CHARS)); const cur = rd && rd.song === String(ch.song) && rd.ch === String(ch.ch);
       grid.append(h('div.chcard' + (cur ? '.cur' : '') + (Number(ch.ch) === 0 ? '.wide' : ''), { onclick: () => GB.chapter.open(B, ch, null, true) },
-        h('div.ch-top', null, h('span.ch-num', { text: 'Chapter ' + ch.ch }), ch.size ? h('span.ch-pgs', { text: pgs + ' pgs' }) : null),
+        h('div.ch-top', null, GB.numbered(B) ? h('span.ch-num', { text: 'Chapter ' + ch.ch }) : h('span.ch-num', { text: '' }), ch.size ? h('span.ch-pgs', { text: pgs + ' pgs' }) : null),
         h('div.ch-title' + devCls(ch.title), { text: GB.ut(ch.title || ('Chapter ' + ch.ch)) }),
         noteIcons(GB.notes.forChapter(B, ch)), cur ? img('ic_bookmark_icon_short.png', 'ch-mark') : null));
     }
@@ -131,7 +132,7 @@
     const top = L.top(); if (top && top.kind === 'chapter') L.pop();
     const prog = h('div.rprog', null, h('i'));
     const under = h('div.under-wrap', null, GB.crumbs(B, ch, null, 'chapter'), prog);
-    const pg = GB.page({ kind: 'chapter', title: B.title, subtitle: lib.chapterLabel(B, ch) + ' ' + (ch.title || ''), under,
+    const pg = GB.page({ kind: 'chapter', title: B.title, subtitle: GB.numbered(B) ? lib.chapterLabel(B, ch) + ' ' + (ch.title || '') : (ch.title || ''), under,
       actions: [GB.canGoto(B) ? GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({ B, ch })) : null, GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => chapterMenu(e.currentTarget, B, ch))].filter(Boolean) });
     pg.B = B; pg.ch = ch;
     L.push(pg);
@@ -146,7 +147,7 @@
         const num = Number(ch.ch) === 0 ? r.no : (GB.prefs.chFullVerseNo ? lib.label(B, ch.song, ch.ch, r.no).split(' ').pop() : 'TEXT ' + r.no);
         const seq = '';
         pg.body.append(h('div.txrow' + (isCur ? '.cur' : ''), { 'data-i': i, onclick: () => GB.reader.open(B, ch, i) },
-          h('div.tx-top', null, h('span.tx-num', { text: num }), noteIcons(GB.notes.forText(B, ch, r)), seq ? h('span.tx-seq', { text: seq }) : null),
+          h('div.tx-top', null, GB.numbered(B) ? h('span.tx-num', { text: num }) : null, noteIcons(GB.notes.forText(B, ch, r)), seq ? h('span.tx-seq', { text: seq }) : null),
           h('div.tx-prev' + devCls(r.preview), { text: GB.ut(r.preview) })));
       });
       if (!rows.length) pg.body.append(h('div.help-row', { text: 'This chapter has no texts.' }));

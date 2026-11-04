@@ -109,7 +109,7 @@
     const sp = B2 && GB.prefs.second ? secondText(B2, pos).catch(() => null) : null;
     const LATE = {}; let second = sp ? await Promise.race([sp, new Promise(r => setTimeout(() => r(LATE), 250))]) : null;
     const late = second === LATE; if (late) second = null;
-    const make = sec => GB.render.verse(t, { B, ch: pos.ch, row: pos.row, label: lib.label(B, pos.ch.song, pos.ch.ch, pos.row.no), wbwHidden: R.wbwHidden, notes, needles: o.needles || null,
+    const make = sec => GB.render.verse(t, { B, ch: pos.ch, row: pos.row, label: GB.numbered(B) ? lib.label(B, pos.ch.song, pos.ch.ch, pos.row.no) : '', wbwHidden: R.wbwHidden, notes, needles: o.needles || null,
       fav: notes.some(n => n.type === 'fav'), noteCount: notes.filter(n => n.type === 'note' || n.type === 'quest').length, canSecond: !!B2, second: sec, mode: o.mode });
     const v = make(second);
     if (late) {
@@ -124,7 +124,7 @@
     }
     posOf.set(v, pos);
     function addRefs(v) { lib.refs(B, pos.ch, pos.row).then(list => { if (!list.length) return; const tb = v.querySelector('#toolbar'); if (!tb || tb.querySelector('[data-act="refs"]')) return;
-      tb.insertBefore(GB.render.tool('refs', 'refs', 'References', false, { 'data-n': String(list.length) }), tb.querySelector('[data-act="notes"]')); }).catch(() => {}); }
+      const rb = GB.render.tool('refs', 'refs', 'References', false, { 'data-n': String(list.length) }); rb.classList.add('t-in'); tb.prepend(rb); }).catch(() => {}); }
     addRefs(v);
     return v;
   }
@@ -340,7 +340,7 @@
       h('div.dr-row.dr-lib', { onclick: () => { closeDrawer(); L.home('L'); R.close(); } }, h('span.dr-num', { html: GB.icons.svg('lib') }), h('span.dr-t', { text: 'Library' })));
     let lastSong = null;
     for (const ch of B.chapters) {
-      if (B.hasSongs && ch.song !== lastSong) { lastSong = ch.song; const s = B.songs.find(x => x.song === ch.song); drawer.append(h('div.dr-song', { text: GB.ut((s && s.name) || ('Canto ' + ch.song)) })); }
+      if (B.hasSongs && ch.song !== lastSong) { lastSong = ch.song; const s = B.songs.find(x => x.song === ch.song); drawer.append(h('div.dr-song', { text: GB.songInfo(B, s || ch.song).title })); }
       const on = ch === cur.ch;
       drawer.append(h('div.dr-row' + (on ? '.on' : ''), { onclick: () => { closeDrawer(); R.open(B, ch, 0, { noAsk: true }); if (GB.isWide()) GB.chapter.open(B, ch, 0); } }, h('span.dr-num', { text: String(ch.ch) }), h('span.dr-t', { text: GB.ut(ch.title) })));
     }

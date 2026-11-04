@@ -12,6 +12,26 @@
   const ico = (name, cls) => h('span.ico' + (cls ? '.' + cls : ''), { html: GB.icons.svg(name) });
   GB.ico = ico;
 
+  // ---------- what to call a book's top level: Canto (SB), līlā (CC), year (Letters, Conversations), topic ----------
+  const isSBlike = B => B.abbr === 'SB' || /bh[aā]gavat/i.test(B.title || '') || /भागवत/.test(B.title || '');
+  GB.songInfo = function (B, key) {
+    const s = key && typeof key === 'object' ? key : ((B.songs || []).find(x => String(x.song) === String(key)) || { song: key });
+    const n = String(s.song); const sb = isSBlike(B); const word = B.lang === 'hin' ? 'स्कन्ध' : 'Canto';
+    let name = GB.ut(s.name || '').trim(), sub = GB.ut(s.subtitle || '').trim(), title = name, count = '';
+    let m = name.match(/^(?:Canto|Part)\s+(\d+)\s*[:.\-]\s*(.+)$/i); if (m) { title = m[2]; if (!sub) sub = 'Canto ' + m[1]; }
+    m = name.match(/^(\d{4})\s*\(([^)]*)\)\s*(\d+)?$/); if (m) { title = m[1]; sub = sub || m[2].split(/,\s*/).slice(0, 4).join(' · ') + (m[2].split(',').length > 4 ? ' …' : ''); count = m[3] || ''; }
+    if (!sub && sb && !/^\d+$/.test(title)) sub = B.lang === 'eng' ? 'Canto ' + n : n;
+    if (!title) title = sb ? (B.lang === 'eng' ? 'Canto ' + n : word + ' ' + n) : n;
+    if (sub === title) sub = '';
+    const short = sb && B.lang === 'eng' ? 'Canto ' + n : (title.length <= 16 ? title : (sb ? word + ' ' + n : title.slice(0, 15) + '…'));
+    const unit = /letter/i.test(B.title || '') ? 'letters' : /conversation/i.test(B.title || '') ? 'talks' : '';
+    const all = sb ? (B.lang === 'hin' ? 'सभी स्कन्ध' : 'All cantos') : /l[iī]l[aā]/i.test(name) ? 'All līlās' : /^\d{4}$/.test(title) ? 'All years' : /topic/i.test(B.title || '') ? 'All topics' : 'All parts';
+    return { sub, title, short, all, count: count && unit ? count + ' ' + unit : count };
+  };
+  // numbered books (verse references make sense); Letters, Conversations, KRISHNA Book etc. use titles instead
+  GB.numbered = B => !!(B && (GB.canGoto ? GB.canGoto(B) : ['BG', 'SB', 'CC'].includes(B.abbr)) || (B && B.hasSanskrit));
+  GB.bookShort = B => { const t = GB.ut(B.title || '').replace(/^(Srila Prabhupada|Śrīla Prabhupāda|SP)\s+/i, ''); return t.length > 20 ? t.slice(0, 19) + '…' : t; };
+
   // ---------- page stack (left column on desktop, whole screen on phones) ----------
   const L = GB.left = { stack: [] };
   L.top = () => L.stack[L.stack.length - 1];
@@ -192,9 +212,10 @@
       const row = h('div.cantos');
       for (const s of B.songs) {
         const mark = rd && String(rd.song) === s.song;
+        const si = GB.songInfo(B, s);
         row.append(h('div.canto', { onclick: () => GB.book.open(B, s.song) },
-          h('div.canto-sub', { text: GB.ut(s.subtitle || (B.lang === 'eng' ? 'Canto ' + s.song : s.song)) }),
-          h('div.canto-title', { text: GB.ut(s.name || ('Canto ' + s.song)) }),
+          si.sub ? h('div.canto-sub', { text: si.sub }) : null,
+          h('div.canto-title', { text: si.title }), si.count ? h('div.canto-sub.canto-n', { text: si.count }) : null,
           mark ? h('div.canto-mark', null, h('span', { text: rd.label.split(' ').pop() }), img('ic_bookmark_icon_short.png')) : null));
       }
       return h('div.vol', null, h('div.vol-author', { text: GB.ut(B.author) }), h('div.vol-title', { text: GB.ut(B.title), onclick: () => GB.book.open(B) }, offBadge(B)), row);
