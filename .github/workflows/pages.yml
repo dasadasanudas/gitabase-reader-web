@@ -42,8 +42,63 @@ jobs:
           else
             printf "{\"version\":1,\"databases\":[]}\n" > site/library/manifest.json
           fi
+      # Verse links without '#': https://<user>.github.io/<repo>/eng/SB/1/1/2 opens that verse. GitHub Pages answers
+      # unknown paths with 404.html, so 404.html is the app too; <base> keeps every file loading from the site root.
+      - name: Verse links without '#' (main site only)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          base = '/' + os.environ['GITHUB_REPOSITORY'].split('/', 1)[1] + '/'
+          ix = Path('site/index.html'); s = ix.read_text(encoding='utf-8')
+          if 'name="gb-paths"' not in s:
+              s = s.replace('<head>', '<head>\n<base href="' + base + '">\n<meta name="gb-paths" content="1">', 1)
+          ix.write_text(s, encoding='utf-8'); Path('site/404.html').write_text(s, encoding='utf-8')
+          print('verse links: base', base)
+          PY
+      # The old app (branch old, the site before 4 Nov 2026) at /old/: same books, its own offline cache and its own
+      # notes/settings store. If this step fails, the main site is still published.
+      - name: Build the old app (branch old at /old/)
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin old
+          rm -rf /tmp/old /tmp/oldsite && mkdir -p /tmp/old
+          git archive FETCH_HEAD index.html sw.js manifest.webmanifest css js fonts img release tools | tar -x -C /tmp/old
+          cd /tmp/old
+          python - <<'PY'
+          import json, os, sys, tempfile
+          from pathlib import Path
+          ws = Path(os.environ['GITHUB_WORKSPACE'])
+          sys.path.insert(0, str(ws / 'tools'))
+          import build_site
+          out = Path('/tmp/oldsite'); out.mkdir(parents=True, exist_ok=True)
+          with tempfile.TemporaryDirectory() as tmp:
+              if build_site.ZIP.exists(): build_site.unpack_zip(out, Path(tmp))
+              build_site.copy_app(out)
+          cat = json.loads((ws / 'site/library/catalog.json').read_text(encoding='utf-8'))
+          for f in cat.get('files', []): f['base'] = '../' + f['base']
+          (out / 'library').mkdir(exist_ok=True)
+          (out / 'library/catalog.json').write_text(json.dumps(cat, ensure_ascii=False), encoding='utf-8')
+          sw = out / 'sw.js'
+          if sw.exists(): sw.write_text(sw.read_text(encoding='utf-8').replace("'gb-", "'gbo-"), encoding='utf-8')
+          st = out / 'js/store.js'
+          if st.exists(): st.write_text(st.read_text(encoding='utf-8').replace("NAME = 'gitabase-reader-web'", "NAME = 'gitabase-reader-web-old'", 1), encoding='utf-8')
+          ix = out / 'index.html'; ix.write_text(ix.read_text(encoding='utf-8').replace('<title>', '<title>Old · ', 1), encoding='utf-8')
+          mf = out / 'manifest.webmanifest'
+          if mf.exists():
+              m = json.loads(mf.read_text(encoding='utf-8')); m['name'] = m.get('name', 'Gitabase Reader') + ' (old)'; m['short_name'] = 'Old'
+              mf.write_text(json.dumps(m, ensure_ascii=False, indent=2), encoding='utf-8')
+          build_site.stamp_sw(out)
+          print('old ready:', sorted(p.name for p in out.iterdir()))
+          PY
+          rm -rf "$GITHUB_WORKSPACE/site/old"
+          mv /tmp/oldsite "$GITHUB_WORKSPACE/site/old"
+          echo "old built from $(git -C "$GITHUB_WORKSPACE" rev-parse --short FETCH_HEAD)"
       # The preview branch at /preview/: same books (it reads the library above), its own offline cache and its own
-      # notes/settings store. If this step fails, the live site is still published.
+      # notes/settings store. If this step fails, the main site is still published.
       - name: Build the preview (preview branch at /preview/)
         continue-on-error: true
         shell: bash
@@ -51,7 +106,7 @@ jobs:
           set -euo pipefail
           git fetch --no-tags --depth=1 origin preview
           rm -rf /tmp/pv /tmp/pvsite && mkdir -p /tmp/pv
-          git archive FETCH_HEAD index.html sw.js manifest.webmanifest css js fonts img tools | tar -x -C /tmp/pv
+          git archive FETCH_HEAD index.html sw.js manifest.webmanifest css js fonts img | tar -x -C /tmp/pv
           cd /tmp/pv
           python - <<'PY'
           import json, os, sys
@@ -61,34 +116,16 @@ jobs:
           import build_site
           out = Path('/tmp/pvsite'); out.mkdir(parents=True, exist_ok=True)
           build_site.copy_app(out)
-          # the preview reads the live site's library: same chunks, one folder up
+          # the preview reads the main site's library: same chunks, one folder up
           cat = json.loads((ws / 'site/library/catalog.json').read_text(encoding='utf-8'))
           for f in cat.get('files', []): f['base'] = '../' + f['base']
           (out / 'library').mkdir(exist_ok=True)
-          # preview-only books: the English Bhagavatam, built from the BBT text source (github.com/iskconpress/books)
-          # with Devanagari for cantos 5-10 taken from the Hindi file. A failure here only leaves it out.
-          builder = Path('/tmp/pv/tools/build_sb_eng.py')
-          if builder.exists():
-              import subprocess
-              try:
-                  bbt = Path('/tmp/bbt'); eng = Path('/tmp/pveng'); eng.mkdir(exist_ok=True)
-                  if not bbt.exists():
-                      subprocess.run(['git', 'clone', '--depth', '1', '--filter=blob:none', '--sparse', 'https://github.com/iskconpress/books', str(bbt)], check=True)
-                      subprocess.run(['git', '-C', str(bbt), 'sparse-checkout', 'set', 'sb'], check=True)
-                  dbs = [str(p) for p in sorted((ws / 'databases').rglob('*')) if p.suffix.lower() in ('.db', '.gitabase', '.sqlite')]
-                  subprocess.run([sys.executable, str(builder), str(bbt), str(eng / 'sb_eng.db')] + dbs, check=True)
-                  subprocess.run([sys.executable, str(ws / 'tools/prepare_library.py'), str(eng), str(out / 'library')], check=True)
-                  extra = json.loads((out / 'library/catalog.json').read_text(encoding='utf-8')).get('files', [])
-                  cat['files'] = cat.get('files', []) + extra
-                  print('preview extra books:', [f['name'] for f in extra])
-              except Exception as err:
-                  print('preview extra books skipped:', err)
           (out / 'library/catalog.json').write_text(json.dumps(cat, ensure_ascii=False), encoding='utf-8')
-          # its own offline caches, so the preview and the live site never clear each other's
+          # its own offline caches, so the preview and the main site never clear each other's
           sw = out / 'sw.js'; s = sw.read_text(encoding='utf-8').replace("'gb-", "'gbp-")
           assert "'gb-" not in s and s.count("'gbp-") >= 3, 'sw.js: cache names not found'
           sw.write_text(s, encoding='utf-8')
-          # its own notes, bookmarks and settings, so testing never touches the live site's data
+          # its own notes, bookmarks and settings, so testing never touches the main site's data
           st = out / 'js/store.js'; s = st.read_text(encoding='utf-8')
           assert "NAME = 'gitabase-reader-web'" in s, 'store.js: database name not found'
           st.write_text(s.replace("NAME = 'gitabase-reader-web'", "NAME = 'gitabase-reader-web-preview'", 1), encoding='utf-8')
