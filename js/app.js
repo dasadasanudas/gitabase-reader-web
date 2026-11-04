@@ -2,8 +2,11 @@
 'use strict';
 (function (GB) {
   const { $ } = GB;
+  GB.paths = !!document.querySelector('meta[name="gb-paths"]');
   async function openHash() {
-    const m = decodeURIComponent(location.hash || '').match(/^#\/([^/]+)\/([^/]+)\/(.+)$/); if (!m) return false;
+    let m = decodeURIComponent(location.hash || '').match(/^#\/([^/]+)\/([^/]+)\/(.+)$/);
+    if (!m && GB.paths) { const base = new URL(document.baseURI).pathname, p = decodeURIComponent(location.pathname); if (p.startsWith(base)) m = ('/' + p.slice(base.length)).match(/^\/([^/]+)\/([^/]+)\/(.+?)\/?$/); }
+    if (!m) return false;
     const [, lang, abbr, rest] = m; const nums = rest.split('/').filter(Boolean);
     let B = GB.lib.books.find(b => b.lang === lang && (b.abbr === abbr || b.title === abbr)) || GB.lib.resolveBook(abbr, lang); if (!B) return false;
     const r = await GB.lib.resolve(B.abbr || abbr, nums, lang); if (!r) return false;
@@ -23,7 +26,7 @@
       await GB.loadPrefs(); GB.applyPrefs();
       GB.home.build(); GB.reader.build(); GB.nav.init();
       msg.textContent = 'Opening library…';
-      await Promise.all([GB.notes.load(), GB.reading.load(), GB.history.load()]);
+      await Promise.all([GB.notes.load(), GB.reading.load(), GB.history.load(), GB.offline.load()]);
       GB.reader.wbwHidden = await GB.store.kvGet('wbwHidden', false);
       await GB.lib.boot();
       document.body.classList.toggle('hosted', GB.lib.hosted);

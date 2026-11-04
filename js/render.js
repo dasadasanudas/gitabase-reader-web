@@ -1,4 +1,4 @@
-/* Gitabase Reader web: verse page rendering (structure of the APK's verse HTML template) and the Devanagari
+/* Gitabase Reader web: verse page rendering (verse, word-for-word, translation, purport) and the Devanagari
    typography pass: per-block script detection, Hindi prose vs Sanskrit verse faces, spacing, danda/visarga fixes. */
 'use strict';
 (function (GB) {
@@ -59,8 +59,8 @@
     const d = frag(html); const out = h('table.wbwTable');
     const parts = d.innerHTML.replace(/<\/?p[^>]*>/gi, ' ').split(/;\s*/);
     for (const p of parts) {
-      const m = p.split(/\s*(?:&#8212;|—|&mdash;)\s*/); if (m.length < 2) continue;
-      const tr = h('tr', null, h('td.w', { html: m[0] }), h('td.m', { html: m.slice(1).join(' — ') }));
+      const m = p.split(/\s*(?:&#8212;|—|&mdash;|--|&#8211;&#8211;|–)\s*/); if (m.length < 2 || !m[0].replace(/<[^>]+>/g, '').trim()) continue;
+      const tr = h('tr', null, h('td.w', { html: m[0], 'data-act': 'word' }), h('td.m', { html: m.slice(1).join(' — ') }));
       out.append(tr);
     }
     return out.rows.length ? out : null;
@@ -75,34 +75,68 @@
       if (!hit) return; f.append(s.slice(last)); n.parentNode.replaceChild(f, n);
     });
   }
-  /* Build the verse page. t = texts row; o = {B, ch, row, wbwHidden, notes, needles, refs, fav, noteCount, compare} */
+  // ---------- verse parts: order, what each reading mode shows, presets ----------
+  const PARTS = ['skt', 'translit', 'wbw', 'tr', 'pp'];
+  const PART_NAMES = { skt: 'Sanskrit', translit: 'Transliteration', wbw: 'Word for word', tr: 'Translation', pp: 'Purport' };
+  const PRESETS = { full: { skt: true, translit: true, wbw: true, tr: true, pp: true }, story: { skt: false, translit: false, wbw: false, tr: true, pp: false }, recite: { skt: true, translit: true, wbw: false, tr: false, pp: false } };
+  GB.parts = {
+    LIST: PARTS, NAMES: PART_NAMES, PRESETS,
+    order: () => (GB.prefs.customOrder && Array.isArray(GB.prefs.order) && GB.prefs.order.length === 5 ? GB.prefs.order : PARTS).slice(),
+    mode: () => (GB.prefs.readMode === 'cont' ? 'cont' : 'verse'),
+    shown: m => Object.assign({}, PRESETS.full, (GB.prefs.show || {})[m || GB.parts.mode()]),
+    set(m, k, v) { const sh = JSON.parse(JSON.stringify(GB.prefs.show)); sh[m] = Object.assign({}, GB.parts.shown(m), { [k]: v }); GB.setPref('show', sh); },
+    preset(m, name) { const sh = JSON.parse(JSON.stringify(GB.prefs.show)); sh[m] = Object.assign({}, PRESETS[name]); GB.setPref('show', sh); },
+    presetOf(m) { const s = GB.parts.shown(m); return Object.keys(PRESETS).find(k => PARTS.every(p => !!PRESETS[k][p] === !!s[p])) || ''; },
+    // the old "Show Sanskrit" switch: Sanskrit, transliteration and word for word together
+    sanskritOn: m => { const s = GB.parts.shown(m); return !!(s.skt || s.translit); },
+    toggleSanskrit(m) { m = m || GB.parts.mode(); const on = !GB.parts.sanskritOn(m); const sh = JSON.parse(JSON.stringify(GB.prefs.show)); sh[m] = Object.assign({}, GB.parts.shown(m), { skt: on, translit: on, wbw: on }); GB.setPref('show', sh); GB.setPref('showSanskrit', on); }
+  };
+  const ico = n => GB.icons.svg(n);
+  function tool(act, icon, title, on, extra) { return h('button.vt' + (on ? '.on' : ''), Object.assign({ type: 'button', 'data-act': act, title, 'aria-label': title, 'aria-pressed': on ? 'true' : 'false', html: ico(icon) }, extra || {})); }
+  R.tool = tool;
+  function block(cls, id, html, hint) { const e = h('div.' + cls + (id ? '#' + id : '')); e.append(...frag(html).childNodes); typo(e, hint); return e; }
+  // primary + second language side by side (wide reading area) or stacked; phones always stack (css container query)
+  function pair(a, b, layout) { if (!b) return a; const w = h('div.pair.' + (layout === 'side' ? 'side' : 'stack')); w.append(a, b); return w; }
+  /* Build one verse. t = texts row; o = {B, ch, row, label, wbwHidden, notes, needles, fav, noteCount, canSecond, second: {t, B}, mode} */
   R.verse = function (t, o) {
-    const P = GB.prefs; const root = h('div.verse', { 'data-id': o.row.id });
-    const dev = h('div.verseSanskrit#verseSanskrit');
-    const showSkt = P.showSanskrit;
-    if (!empty(t.sanskrit) && !P.hideDevanagari) { dev.append(...frag(t.sanskrit).childNodes); typo(dev, 'skt'); dev.classList.add('dev', 'skt'); dev.setAttribute('lang', 'sa'); if (!showSkt) dev.hidden = true; root.append(dev); }
-    if (!empty(t.translit)) { const tl = h('div.verseTranslit#verseTranslit'); tl.append(...frag(t.translit).childNodes); typo(tl, 'skt'); if (!showSkt) tl.hidden = true; root.append(tl); }
-    if (!empty(t.transl1)) {
-      const icon = h('img.wbw_img#wbw_img', { src: 'img/tb/ic_' + (o.wbwHidden ? 'show' : 'hide') + '_wbw' + (P.night ? '_d' : '') + '.png', alt: '', draggable: 'false', 'data-act': 'wbw' });
-      const w = h('div.verseTranslWBW#verseTranslWBW');
-      const tbl = P.wbwStyle === 'table' ? wbwTable(t.transl1) : null;
-      if (tbl) w.append(tbl); else w.append(...frag(t.transl1).childNodes);
-      typo(w); markWbwHeads(w);
-      if (o.wbwHidden) w.hidden = true;
-      if (!showSkt) { icon.hidden = true; w.hidden = true; }
-      root.append(icon, w);
+    const P = GB.prefs; const mode = o.mode || GB.parts.mode(); const show = GB.parts.shown(mode);
+    const root = h('div.verse.m-' + mode, { 'data-id': o.row.id });
+    const t2 = o.second && o.second.t; const lay = P.secondLayout;
+    // header: reference + verse actions (heart, second language, references, notes, share)
+    const tools = h('div#toolbar.vtools');
+    tools.append(tool('fav', o.fav ? 'heartOn' : 'heart', o.fav ? 'Remove from favourites' : 'Favourite', o.fav));
+    if (o.canSecond) tools.append(tool('second', 'lang', P.second ? 'Hide the second language' : 'Show the second language', P.second));
+    tools.append(tool('notes', 'note', 'Notes', o.noteCount > 0, o.noteCount ? { 'data-n': String(o.noteCount) } : null));
+    tools.append(tool('share', 'share', 'Share this verse'));
+    root.append(h('div.vhead', null, h('span.vlabel', { text: o.label || '' }), tools));
+    let any = false;
+    for (const k of GB.parts.order()) {
+      if (!show[k]) continue;
+      if (k === 'skt') {
+        if (P.hideDevanagari) continue;
+        let src = !empty(t.sanskrit) ? t.sanskrit : (t2 && !empty(t2.sanskrit) ? t2.sanskrit : null); if (!src) continue;
+        const dev = block('verseSanskrit', src === t.sanskrit ? 'verseSanskrit' : null, src, 'skt'); dev.classList.add('dev', 'skt'); dev.setAttribute('lang', 'sa'); root.append(dev); any = true;
+      } else if (k === 'translit') {
+        if (!empty(t.translit)) { root.append(block('verseTranslit', 'verseTranslit', t.translit, 'skt')); any = true; }
+        else if (t2 && !empty(t2.translit)) { root.append(block('verseTranslit.alt', null, t2.translit, 'skt')); any = true; }
+      } else if (k === 'wbw') {
+        const mk = (html, id) => { const w = h('div.verseTranslWBW' + (id ? '#' + id : '.alt')); const tbl = P.wbwStyle === 'table' ? wbwTable(html) : null; if (tbl) w.append(tbl); else w.append(...frag(html).childNodes); typo(w); markWbwHeads(w); return w; };
+        const a = !empty(t.transl1) ? mk(t.transl1, 'verseTranslWBW') : null, b = t2 && !empty(t2.transl1) ? mk(t2.transl1) : null;
+        if (!a && !b) continue;
+        const fold = h('button.wbw-fold' + (o.wbwHidden ? '' : '.open'), { type: 'button', 'data-act': 'wbw', title: o.wbwHidden ? 'Show word for word' : 'Hide word for word', 'aria-expanded': o.wbwHidden ? 'false' : 'true', html: ico('chev') });
+        const box = h('div.wbw-box', { hidden: !!o.wbwHidden }, a && b ? pair(a, b, lay) : (a || b));
+        root.append(fold, box); any = true;
+      } else if (k === 'tr') {
+        const a = !empty(t.transl2) ? block('verseTransl2', 'verseTransl2', t.transl2) : null, b = t2 && !empty(t2.transl2) ? block('verseTransl2.alt', null, t2.transl2) : null;
+        if (a || b) { root.append(a && b ? pair(a, b, lay) : (a || b)); any = true; }
+      } else if (k === 'pp') {
+        const a = !empty(t.comment) ? block('versePurport', 'versePurport', t.comment) : null;
+        const b = t2 && !empty(t2.comment) ? (() => { const d = h('details.pp2'); const body = block('versePurport.alt', null, t2.comment); const first = GB.stripTags ? GB.stripTags(t2.comment) : body.textContent;
+          d.append(h('summary', null, h('span.pp2-peek', { text: String(first).replace(/\s+/g, ' ').trim().slice(0, 140) }), h('span.pp2-ic', { html: ico('chev') })), body); return d; })() : null;
+        if (a || b) { root.append(h('div.pp-rule', { 'aria-hidden': 'true' }, h('i'), h('b'), h('i'))); if (a) root.append(a); if (b) root.append(b); any = true; }
+      }
     }
-    if (!empty(t.transl2)) { const tr = h('div.verseTransl2#verseTransl2'); tr.append(...frag(t.transl2).childNodes); typo(tr); root.append(tr); }
-    // toolbar: garland (favourite), compare, translate, refs (+count), notes
-    const N = P.night ? '_d' : '_o';
-    const tb = h('div#toolbar');
-    tb.append(h('img.tb_img' + (o.fav ? '.on' : ''), { src: 'img/tb/ic_garland' + N + '.png', 'data-act': 'fav', title: 'Add to favorites', draggable: 'false' }));
-    if (o.compare) tb.append(h('img.tb_img', { src: 'img/tb/ic_compare' + N + '.png', 'data-act': 'compare', title: 'Compare', draggable: 'false' }));
-    if (o.translate) tb.append(h('img.tb_img', { src: 'img/tb/ic_translate' + N + '.png', 'data-act': 'translate', title: 'Translate', draggable: 'false' }));
-    if (o.refs) tb.append(h('span.tb_refs_wrap', null, h('img.tb_img', { src: 'img/tb/ic_refs' + N + '.png', 'data-act': 'refs', title: 'References', draggable: 'false' }), h('span.nrefs', { text: o.refs })));
-    tb.append(h('img.tb_img' + (o.noteCount ? '.on' : ''), { src: 'img/tb/ic_notes' + N + '.png', 'data-act': 'notes', title: 'Notes', draggable: 'false' }));
-    root.append(tb);
-    if (!empty(t.comment)) { const pu = h('div.versePurport#versePurport'); pu.append(...frag(t.comment).childNodes); typo(pu); root.append(pu); }
+    if (!any) root.append(h('div.verse-none', { text: 'Every part of the verse is hidden. Open Aa to choose what to show.' }));
     root.append(h('div#divBottomPaginationFooter'));
     if (o.notes && o.notes.length) R.applyNotes(root, o.notes);
     if (o.needles && o.needles.length) R.highlight(root, o.needles);

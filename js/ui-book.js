@@ -22,7 +22,7 @@
     const st = { tab: 'contents', song: song != null ? String(song) : null };
     const existing = L.top(); if (existing && existing.kind === 'book' && existing.B === B) { existing.st.song = st.song; existing.st.tab = 'contents'; existing.refresh(); return; }
     const pg = GB.page({ kind: 'book', title: B.author || B.title, subtitle: B.author ? B.title : '', cls: 'bookpage',
-      actions: [GB.hbtn('ic_action_search.png', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => bookMenu(e.currentTarget, B, st, pg))] });
+      actions: [GB.canGoto(B) ? GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({ B })) : null, GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => bookMenu(e.currentTarget, B, st, pg))].filter(Boolean) });
     pg.B = B; pg.st = st;
     const tabs = h('div.btabs'); pg.el.insertBefore(tabs, pg.body);
     pg.refresh = () => render(pg, B, st, tabs);
@@ -31,19 +31,21 @@
   function bookMenu(anchor, B, st, pg) {
     const rd = GB.reading.get(B);
     GB.ui.menu(anchor, [
-      rd ? { label: 'Open Bookmark', icon: 'ic_bookmark_open.png', onClick: () => GB.reader.openSaved(B, rd) } : null,
-      rd ? { label: 'Forget bookmark', icon: 'ic_remove_bookmark.png', onClick: async () => { await GB.reading.remove(B.key); pg.refresh(); } } : null,
-      { label: GB.prefs.showSanskrit ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.setPref('showSanskrit', !GB.prefs.showSanskrit); GB.reader.rerender(); } },
-      { label: GB.prefs.night ? 'Light Theme' : 'Night Mode', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
-      { label: 'Open randomly', icon: 'ic_random_text_o.png', onClick: async () => { const ch = B.chapters[Math.floor(Math.random() * B.chapters.length)]; const rows = await lib.chapterTexts(B, ch); GB.reader.open(B, ch, Math.floor(Math.random() * rows.length)); } },
-      { label: 'Show all notes', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
+      rd ? { label: 'Continue reading', icon: 'ic_bookmark_open.png', onClick: () => GB.reader.openSaved(B, rd) } : null,
+      GB.canGoto(B) ? { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({ B }) } : null,
+      GB.offline && GB.offline.can(B) ? { label: GB.offline.has(B) ? 'Saved for offline ✓' : 'Save for offline', icon: 'download', onClick: () => GB.offline.download(B) } : null,
+      rd ? { label: 'Clear bookmark', icon: 'ic_remove_bookmark.png', onClick: async () => { await GB.reading.remove(B.key); pg.refresh(); } } : null,
+      { label: GB.parts.sanskritOn() ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.parts.toggleSanskrit(); GB.reader.rerender(); } },
+      { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
+      { label: 'Random text', icon: 'ic_random_text_o.png', onClick: async () => { const ch = B.chapters[Math.floor(Math.random() * B.chapters.length)]; const rows = await lib.chapterTexts(B, ch); GB.reader.open(B, ch, Math.floor(Math.random() * rows.length)); } },
+      { label: 'All notes in this book', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
       { label: 'Settings', icon: 'ic_mmenu_settings.png', onClick: () => GB.settingsPage() },
-      { label: 'Increase font', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
-      { label: 'Decrease font', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }].filter(Boolean));
+      { label: 'Larger text', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
+      { label: 'Smaller text', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }].filter(Boolean));
   }
   function render(pg, B, st, tabs) {
     tabs.innerHTML = '';
-    const kinds = GB.prefs.hideImageTabs ? [] : Object.keys(B.imgKinds).sort();
+    const kinds = [];   // v2: the gitabases carry no pictures; picture tabs removed
     if (kinds.length) {
       const all = [['contents', 'contents']].concat(kinds.map(k => ['k' + k, lib.KIND_TABS[k] || 'pictures']));
       for (const [k, t] of all) tabs.append(h('button.btab' + (st.tab === k ? '.on' : ''), { text: t, onclick: () => { st.tab = k; render(pg, B, st, tabs); } }));
@@ -57,24 +59,25 @@
     if (B.hasSongs && st.song == null) {
       for (const s of B.songs) {
         const chs = lib.songChapters(B, s.song); const notes = GB.notes.forBook(B).filter(n => n.ref.song === s.song);
+        const si = GB.songInfo(B, s);
         body.append(h('div.song-row', { onclick: () => { st.song = s.song; pg.refresh(); } },
-          h('div.song-sub', { text: GB.ut(s.subtitle || ((B.lang === 'eng' ? 'Canto ' : '') + s.song)) }),
-          h('div.song-title' + devCls(s.name), { text: GB.ut(s.name || 'Canto ' + s.song) }),
-          h('div.song-meta', { text: chs.length + ' chapters' + (s.size ? ' · ' + Math.round(s.size / PAGE_CHARS) + ' pgs' : '') }),
+          si.sub ? h('div.song-sub', { text: si.sub }) : null,
+          h('div.song-title' + devCls(s.name), { text: si.title }),
+          h('div.song-meta', { text: (si.count || (chs.length + (chs.length === 1 ? ' chapter' : ' chapters'))) + (s.size ? ' · ' + Math.round(s.size / PAGE_CHARS) + ' pgs' : '') }),
           noteIcons(notes), rd && rd.song === s.song ? h('div.song-mark', null, h('span', { text: rd.label.split(' ').pop() }), img(GB.prefs.night ? 'bookmark_open_dark.png' : 'bookmark_open.png')) : null));
       }
       return;
     }
     if (B.hasSongs) {
       const s = B.songs.find(x => x.song === st.song) || {};
-      body.append(h('div.allsongs', null, h('button.link-back', { onclick: () => { st.song = null; pg.refresh(); } }, GB.ico('back'), h('span', { text: 'All cantos' })),
-        h('span.cur-song' + devCls(s.name), { text: GB.ut(s.name || ('Canto ' + st.song)) })));
+      body.append(h('div.allsongs', null, h('button.link-back', { onclick: () => { st.song = null; pg.refresh(); } }, GB.ico('back'), h('span', { text: GB.songInfo(B, st.song).all })),
+        h('span.cur-song' + devCls(s.name), { text: GB.songInfo(B, st.song).title })));
     }
     const grid = h('div.chgrid' + (GB.prefs.chapters2col ? '.two' : ''));
     for (const ch of lib.songChapters(B, B.hasSongs ? st.song : null)) {
       const pgs = Math.max(1, Math.round(ch.size / PAGE_CHARS)); const cur = rd && rd.song === String(ch.song) && rd.ch === String(ch.ch);
       grid.append(h('div.chcard' + (cur ? '.cur' : '') + (Number(ch.ch) === 0 ? '.wide' : ''), { onclick: () => GB.chapter.open(B, ch, null, true) },
-        h('div.ch-top', null, h('span.ch-num', { text: 'Chapter ' + ch.ch }), ch.size ? h('span.ch-pgs', { text: pgs + ' pgs' }) : null),
+        h('div.ch-top', null, GB.numbered(B) ? h('span.ch-num', { text: 'Chapter ' + ch.ch }) : h('span.ch-num', { text: '' }), ch.size ? h('span.ch-pgs', { text: pgs + ' pgs' }) : null),
         h('div.ch-title' + devCls(ch.title), { text: GB.ut(ch.title || ('Chapter ' + ch.ch)) }),
         noteIcons(GB.notes.forChapter(B, ch)), cur ? img('ic_bookmark_icon_short.png', 'ch-mark') : null));
     }
@@ -128,10 +131,12 @@
   GB.chapter.open = async function (B, ch, focusI, autoOpen) {
     const top = L.top(); if (top && top.kind === 'chapter') L.pop();
     const prog = h('div.rprog', null, h('i'));
-    const pg = GB.page({ kind: 'chapter', title: B.title, subtitle: lib.chapterLabel(B, ch) + ' ' + (ch.title || ''), under: prog,
-      actions: [GB.hbtn('ic_action_search.png', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => chapterMenu(e.currentTarget, B, ch))] });
+    const under = h('div.under-wrap', null, GB.crumbs(B, ch, null, 'chapter'), prog);
+    const pg = GB.page({ kind: 'chapter', title: B.title, subtitle: GB.numbered(B) ? lib.chapterLabel(B, ch) + ' ' + (ch.title || '') : (ch.title || ''), under,
+      actions: [GB.canGoto(B) ? GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({ B, ch })) : null, GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => chapterMenu(e.currentTarget, B, ch))].filter(Boolean) });
     pg.B = B; pg.ch = ch;
     L.push(pg);
+    { const w = document.createElement('div'); w.className = 'sk-wrap'; w.append(GB.skeletonRows(9), GB.loader('gb-loader-list')); pg.body.append(w); }
     const rows = await lib.chapterTexts(B, ch);
     const rd = GB.reading.get(B);
     prog.firstChild.style.width = Math.round(((rd && rd.progress) || 0) * 100) + '%';
@@ -140,9 +145,9 @@
       rows.forEach((r, i) => {
         const isCur = cur && cur.B === B && cur.ch === ch && cur.i === i;
         const num = Number(ch.ch) === 0 ? r.no : (GB.prefs.chFullVerseNo ? lib.label(B, ch.song, ch.ch, r.no).split(' ').pop() : 'TEXT ' + r.no);
-        const seq = GB.prefs.chSeqNo && r.seq ? '#' + r.seq + (r.offset ? ' · p.' + (Math.floor(r.offset / PAGE_CHARS) + 1) : '') : '';
+        const seq = '';
         pg.body.append(h('div.txrow' + (isCur ? '.cur' : ''), { 'data-i': i, onclick: () => GB.reader.open(B, ch, i) },
-          h('div.tx-top', null, h('span.tx-num', { text: num }), noteIcons(GB.notes.forText(B, ch, r)), r.images ? img('ic_images.png', 'tx-img') : null, seq ? h('span.tx-seq', { text: seq }) : null),
+          h('div.tx-top', null, GB.numbered(B) ? h('span.tx-num', { text: num }) : null, noteIcons(GB.notes.forText(B, ch, r)), seq ? h('span.tx-seq', { text: seq }) : null),
           h('div.tx-prev' + devCls(r.preview), { text: GB.ut(r.preview) })));
       });
       if (!rows.length) pg.body.append(h('div.help-row', { text: 'This chapter has no texts.' }));
@@ -163,14 +168,15 @@
   function chapterMenu(anchor, B, ch) {
     GB.ui.menu(anchor, [
       { label: 'Search', icon: 'ic_action_search.png', onClick: () => GB.search.dialog({ book: B }) },
-      { label: 'Browsing History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() },
-      { label: 'Open Bookmark', icon: 'ic_bookmark_open.png', onClick: () => { const rd = GB.reading.get(B); if (rd) GB.reader.openSaved(B, rd); else GB.ui.toast('No bookmark in this book yet'); } },
+      { label: 'History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() },
+      { label: 'Go to bookmark', icon: 'ic_bookmark_open.png', onClick: () => { const rd = GB.reading.get(B); if (rd) GB.reader.openSaved(B, rd); else GB.ui.toast('No bookmark in this book yet'); } },
       { label: 'Library', icon: 'ic_menu_books.png', onClick: () => L.home('L') },
-      { label: GB.prefs.showSanskrit ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.setPref('showSanskrit', !GB.prefs.showSanskrit); GB.reader.rerender(); } },
-      { label: GB.prefs.night ? 'Light Theme' : 'Night Mode', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
-      { label: 'Show all notes', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
+      GB.canGoto(B) ? { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({ B, ch }) } : null,
+      { label: GB.parts.sanskritOn() ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.parts.toggleSanskrit(); GB.reader.rerender(); } },
+      { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
+      { label: 'All notes in this book', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
       { label: 'Settings', icon: 'ic_mmenu_settings.png', onClick: () => GB.settingsPage() },
-      { label: 'Increase font', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
-      { label: 'Decrease font', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }]);
+      { label: 'Larger text', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
+      { label: 'Smaller text', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }].filter(Boolean));
   }
 })(window.GB);

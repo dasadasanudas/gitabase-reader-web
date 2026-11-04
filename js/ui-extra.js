@@ -9,23 +9,23 @@
   const S = GB.search = { last: { exact: false, sort: 'none', scope: 'all', where: 'book' } };
   S.dialog = async function (ctx) {
     ctx = ctx || {}; const st = S.last; const hist = await GB.store.kvGet('searchHistory', []);
-    const inp = h('input.sd-in', { type: 'search', placeholder: 'Find word or phrase', list: 'gbSearchHist', autocomplete: 'off', spellcheck: 'false' }); inp.value = ctx.q || st.q || '';
+    const inp = h('input.sd-in', { type: 'search', placeholder: 'Word or phrase', list: 'gbSearchHist', autocomplete: 'off', spellcheck: 'false' }); inp.value = ctx.q || st.q || '';
     const dl = h('datalist#gbSearchHist', null, hist.map(q => h('option', { value: q })));
     const exact = h('input', { type: 'checkbox' }); exact.checked = !!st.exact;
     const useIdx = h('input', { type: 'checkbox' }); useIdx.checked = GB.prefs.useIndex;
     const radios = (name, opts, val) => h('div.sd-radios', null, opts.map(([v, t]) => { const r = h('input', { type: 'radio', name, value: v }); r.checked = v === val; return h('label', null, r, h('span', { text: t })); }));
-    const sort = radios('sdsort', [['none', 'no sorting'], ['count', 'sort by number of occurences'], ['dist', 'by distance btw results']], st.sort);
-    const scope = radios('sdscope', [['all', 'everywhere'], ['verses', 'verses'], ['comments', 'comments'], ['sanskrit', 'sanskrit']], st.scope);
-    const where = ctx.book ? radios('sdwhere', [['book', 'in this book'], ['all', 'in all books']], st.where) : null;
+    const sort = radios('sdsort', [['none', 'In book order'], ['count', 'Most matches first'], ['dist', 'Closest words first']], st.sort);
+    const scope = radios('sdscope', [['all', 'Everywhere'], ['verses', 'Translations'], ['comments', 'Purports'], ['sanskrit', 'Sanskrit']], st.scope);
+    const where = ctx.book ? radios('sdwhere', [['book', 'This book'], ['all', 'All books']], st.where) : null;
     const go = () => { const q = inp.value.trim(); if (!q) { inp.focus(); return; } const v = n => (d.el.querySelector('input[name=' + n + ']:checked') || {}).value;
       Object.assign(S.last, { q, exact: exact.checked, sort: v('sdsort'), scope: v('sdscope'), where: where ? v('sdwhere') : S.last.where }); GB.setPref('useIndex', useIdx.checked);
       d.close(); S.run({ q, book: ctx.book && (!where || v('sdwhere') === 'book') ? ctx.book : null, exact: exact.checked, sort: v('sdsort'), scope: v('sdscope') }); };
     inp.addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
-    const body = h('div.sd', null, h('div.sd-hint', { text: 'To search for word variants add *, i.e. adhikar*' }), h('label.sd-cb', null, exact, h('span', { text: 'Search for this exact phrase' })),
+    const body = h('div.sd', null, h('div.sd-hint', { text: 'Add * for word forms, for example adhikar*' }), h('label.sd-cb', null, exact, h('span', { text: 'Exact phrase' })),
       h('div.sd-row', null, inp, dl, h('button.sd-go', { title: 'Search', onclick: go }, img('ic_go4seach.png'))),
       h('div.sd-cols', null, sort, scope), where, h('label.sd-cb', null, useIdx, h('span', { text: 'Use search index (fast; off = slow scan that also finds parts of words)' })),
       ctx.book ? h('div.sd-book', { text: GB.ut(ctx.book.title) }) : null);
-    const d = GB.ui.dialog({ title: 'Search', body, cls: 'searchdlg', buttons: [{ label: 'CANCEL', value: null }, { label: 'SEARCH', onClick: () => { go(); return false; } }] });
+    const d = GB.ui.dialog({ title: 'Search', body, cls: 'searchdlg', buttons: [{ label: 'Cancel', value: null }, { label: 'Search', onClick: () => { go(); return false; } }] });
     setTimeout(() => { inp.focus(); inp.select(); }, 30);
   };
   const COLS = { all: [5, 6, 7], verses: [6], comments: [7], sanskrit: [5] };
@@ -35,8 +35,8 @@
     const hist = await GB.store.kvGet('searchHistory', []); await GB.store.kvSet('searchHistory', [o.q].concat(hist.filter(x => x !== o.q)).slice(0, 30));
     const needles = o.exact ? [o.q.replace(/"/g, '')] : GBFTS.needles(o.q);
     const count = h('span.sr-count', { text: '…' });
-    const pg = GB.page({ kind: 'search', title: 'Results of search for query', subtitle: o.q + (o.book ? '  ·  ' + o.book.title : ''), cls: 'searchpage',
-      actions: [count, GB.hbtn('ic_action_search.png', 'Search again', () => S.dialog({ book: o.book, q: o.q }))] });
+    const pg = GB.page({ kind: 'search', title: 'Search results', subtitle: o.q + (o.book ? '  ·  ' + o.book.title : ''), cls: 'searchpage',
+      actions: [count, GB.hbtn('search', 'New search', () => S.dialog({ book: o.book, q: o.q }))] });
     const top = L.top(); if (top && top.kind === 'search') L.replaceTop(pg); else L.push(pg);
     const list = h('div.sr-list'); pg.body.append(list);
     const status = h('div.loading-row', { text: 'Searching…' }); pg.body.append(status);
@@ -87,7 +87,7 @@
   };
   function resultRow(r, needles, o) {
     const bk = r.D.books.find(b => b._id == r.b); const B = bk ? lib.books.find(x => x.parts.some(p => p.D === r.D && p.bookId == bk._id)) : null;
-    if (!B) return h('div.sr-row.dim', { text: 'Text outside the loaded books' });
+    if (!B) return h('div.sr-row.dim', { text: 'Text from a book that is not in your library' });
     const ch = lib.findChapter(B, r.s, r.c);
     let place = Object.keys(r.pc || {}).sort().map(k => PLACE[k]).filter(Boolean)[0];
     let col = place === 'purport' ? 7 : place === 'synonyms' ? 5 : 6;
@@ -210,47 +210,41 @@
   };
   // ================= settings =================
   const SET = [
-    ['General settings'],
-    ['openHistoryOnLaunch', 'Open Browsing History every time when app launches', 'bool', 'After app just started, open browsing history if yes'],
-    ['night', 'Night Mode', 'bool', ''],
-    ['layout', 'Layout', [['auto', 'Automatic (by window width)'], ['desktop', 'Desktop view: tabs, list and text side by side'], ['mobile', 'Mobile view: one screen at a time, tabs at the bottom']], 'Desktop or mobile view on any screen'],
-    ['hideStatusBar', 'Hide Android top notifications bar', 'bool', 'Full screen while reading on phones and tablets. Allows not to distract your attention during reading'],
-    ['Text Screen Settings'],
-    ['fixedDirection', 'Fixed direction by book type', 'bool', 'Books of verses (Gita, Bhagavatam, Caitanya-caritamrta, anything with Sanskrit) always scroll vertically, small books always page horizontally. Off = choose per book, with the default below'],
-    ['defaultLayout', 'Default Layout', [['vertical', 'Vertical scrolling'], ['horizontal', 'Horizontal scrolling']], 'How the text screen is displayed'],
-    ['showSanskrit', 'Show Sanskrit', 'bool', 'Select default setting for showing or hiding sanskrit after opening Text screen'],
-    ['wbwStyle', 'Word By Word display style', [['table', 'Table'], ['classic', 'Classic']], 'Style to display word by word sanskrit translation'],
-    ['hideDevanagari', 'Hide Sanskrit in Devanagari', 'bool', "Allows to save space on screen if you can't read Devanagari anyway"],
-    ['fontSize', 'Font size', 'num', 'Text screen font size, px', 10, 40],
-    ['fontStep', 'Step to change font size', [[0.5, '0.5'], [1, '1'], [1.5, '1.5'], [2, '2']], 'Step to change font size used on text screen or in general note'],
-    ['textAlign', 'Text alignment', [['left', 'Left'], ['justify', 'Justify'], ['center', 'Center']], 'Left/just/center. Devanagari is never justified'],
-    ['diacritics', 'Diakritics font', 'bool', 'Gaura Times with diacritics. Off = simple font'],
-    ['matchScript', "Match the book's script", 'bool', 'Hindi prose in Tiro Devanagari Hindi, Sanskrit verse in Tiro Devanagari Sanskrit, real bold weights and roomier Devanagari spacing'],
-    ['doubleProgress', 'Double reading progress under titlebar', 'bool', 'Double progress shows chapter position and volume, single progress only volume'],
-    ['keepAwake', 'Keep the screen on while reading', 'bool', 'The screen does not dim or lock while a text is open'],
-    ['topRightIcon', 'Top Right Corner Icon', [['history', 'Browsing History'], ['bookmark', 'Add Bookmark']], 'Bookmark or Browsing History'],
-    ['Chapter Screen Settings'],
-    ['chNotesIcons', 'Show notes/favs icons', 'bool', ''],
-    ['chFullVerseNo', 'Show full verse number', 'bool', 'Show chapter number in verse number'],
-    ['chSeqNo', 'Display sequential verse number and approx. page number in paperback', 'bool', 'Show additional verse number indicating its linear position in the book and approx page number in printed book'],
-    ['Book Screen settings'],
-    ['hideImageTabs', 'Hide image tabs', 'bool', 'Hide images, cards etc'],
-    ['chapters2col', 'Display chapters in 2 columns', 'bool', 'specify chapters screen appearance'],
-    ['Reading speed settings'],
-    ['readHours', 'How many hours do you usually read in 3 days?', 'num', '', 1, 72],
-    ['readSpeed', 'Your approx. reading speed, x100 chars per minute', 'num', '', 1, 60],
-    ['Page by Page Reading'],
-    ['pageButtons', 'Page buttons (up / close / down)', 'bool', 'Buttons on the right side of the text. They only scroll the text'],
-    ['pageButtonsCrossChapters', 'PgUp & PgDown can open previous or next text when reaching beginning or end of the text', 'bool', 'Defines how PgUp & PgDown buttons work in Paginated Reading mode'],
-    ['crossButton', 'What middle button does', [['hide', 'Hides the page buttons'], ['close', 'Closes current screen']], 'What middle button does in paginated reading mode'],
-    ['showPageNumbers', 'Show (current page/total pages) in chapter', 'bool', ''],
-    ['Search'],
-    ['useIndex', 'Use search index', 'bool', 'Fast full-text search with the index inside the gitabase. Off = slower scan that also finds parts of words'],
-    ['Notes'],
-    ['!backup', 'Backup notes', 'act', 'Save notes, topics, reading list and history to a .json file'],
-    ['!restore', 'Restore from backup', 'act', 'Merge or replace notes from a .json backup'],
-    ['!library', 'My books', 'act', 'Add or remove gitabase files'],
-    ['!about', 'About App', 'act', '']];
+    ['Appearance'],
+    ['night', 'Night theme', 'bool', ''],
+    ['accent', 'Accent', 'accent', ''],
+    ['layout', 'Screen layout', [['auto', 'Automatic (by window width)'], ['desktop', 'Side by side: tabs, list and text'], ['mobile', 'One screen at a time, tabs at the bottom']], 'Works on any screen size'],
+    ['fontSize', 'Text size', 'num', 'In pixels', 10, 40],
+    ['textAlign', 'Alignment', [['left', 'Left'], ['justify', 'Justified'], ['center', 'Centred']], 'Devanagari is never justified'],
+    ['Reading'],
+    ['readMode', 'Reading mode', [['verse', 'Verse by verse'], ['cont', 'Continuous (verses and chapters run on)']], 'Books of verses. Small books always turn pages'],
+    ['!parts', 'What to show', 'act', 'Sanskrit, transliteration, word for word, translation, purport: Aa in the reader, per mode'],
+    ['second', 'Second language', 'bool', 'The same verse from another language edition in your library'],
+    ['secondLayout', 'Second language layout', [['stack', 'Stacked'], ['side', 'Side by side (wide screens)']], 'Phones always stack'],
+    ['wbwStyle', 'Word-for-word style', [['table', 'Table'], ['classic', 'Running text']], 'How the word-for-word meanings are laid out'],
+    ['hideDevanagari', 'Hide Devanagari', 'bool', 'Keep only the transliteration of the verse'],
+    ['doubleProgress', 'Two progress bars', 'bool', 'Chapter and book progress under the title bar. Off = book only'],
+    ['keepAwake', 'Keep the screen on', 'bool', 'The screen does not dim or lock while a text is open'],
+    ['hideStatusBar', 'Full screen while reading', 'bool', 'Hides the system bars on phones and tablets'],
+    ['openHistoryOnLaunch', 'Open history on start', 'bool', 'Show your recent texts when the app opens'],
+    ['Chapter list'],
+    ['chNotesIcons', 'Note markers', 'bool', 'Small icons for favourites, highlights, notes and questions'],
+    ['chFullVerseNo', 'Full verse numbers', 'bool', 'Include the chapter number'],
+    ['chapters2col', 'Chapters in two columns', 'bool', ''],
+    ['Reading time'],
+    ['readHours', 'Hours you read in three days', 'num', 'Used for the time-left estimate', 1, 72],
+    ['readSpeed', 'Reading speed', 'num', 'Hundreds of characters per minute', 1, 60],
+    ['Advanced'],
+    ['!order', 'Verse order', 'act', 'Reorder the parts of a verse and switch each one on or off'],
+    ['fontStep', 'Text size step', [[0.5, '0.5'], [1, '1'], [1.5, '1.5'], [2, '2']], 'How much Larger text and Smaller text change the size'],
+    ['diacritics', 'Diacritics font', 'bool', 'Gaura Times with full diacritics. Off = plain font'],
+    ['matchScript', 'Script-aware type', 'bool', 'Hindi prose in Tiro Devanagari Hindi, Sanskrit verse in Tiro Devanagari Sanskrit, real bold weights and roomier Devanagari spacing'],
+    ['useIndex', 'Use the search index', 'bool', 'Fast full-text search with the index inside the book file. Off = slower scan that also finds parts of words'],
+    ['Notes and files'],
+    ['!backup', 'Back up notes', 'act', 'Save notes, folders, reading list and history as a .json file'],
+    ['!restore', 'Restore notes', 'act', 'Merge or replace notes from a .json backup'],
+    ['!library', 'Book files', 'act', 'Add or remove book files'],
+    ['!about', 'About', 'act', '']];
   GB.settingsPage = function () {
     const ex = L.find('settings'); if (ex) { while (L.top() !== ex) L.pop(); return; }
     const pg = GB.page({ kind: 'settings', title: 'Settings', cls: 'settingspage' });
@@ -262,15 +256,16 @@
         const P = GB.prefs; let ctl = null, val = null, onclick = null;
         if (type === 'bool') { ctl = h('span.sw' + (P[k] ? '.on' : '')); onclick = () => change(k, !P[k]); }
         else if (type === 'num') { ctl = h('span.num', null, h('button.num-b', { text: '−', onclick: e => { e.stopPropagation(); change(k, Math.max(min, +P[k] - 1)); } }), h('b', { text: String(P[k]) }), h('button.num-b', { text: '+', onclick: e => { e.stopPropagation(); change(k, Math.min(max, +P[k] + 1)); } })); }
-        else if (type === 'act') { onclick = () => ({ '!backup': () => GB.notes.backup(), '!restore': () => GB.restoreUI(), '!library': () => { GB.home.sub = 'mine'; L.home('L'); }, '!about': GB.about })[k](); }
+        else if (type === 'act') { onclick = () => ({ '!backup': () => GB.notes.backup(), '!restore': () => GB.restoreUI(), '!library': () => { GB.home.sub = 'mine'; L.home('L'); }, '!about': GB.about, '!order': () => GB.verseOrderPage(), '!parts': () => GB.readPanel() })[k](); }
+        else if (type === 'accent') { const A = GB.ACCENTS[P.accent] || GB.ACCENTS.tulasi; val = A.name; ctl = h('span.adot.on.mini', { style: { '--c': A.day, '--cn': A.night } }); onclick = () => choose(k, title, Object.values(GB.ACCENTS).map(x => [x.key, x.name])); }
         else { const cur = type.find(o => o[0] == P[k]); val = cur ? cur[1] : String(P[k]); onclick = () => choose(k, title, type); }
         pg.body.append(h('div.pref' + (onclick ? '.click' : ''), { onclick }, h('div.pref-main', null, h('div.pref-t', { text: title }), sum ? h('div.pref-s', { text: sum }) : null, val ? h('div.pref-v', { text: val }) : null), ctl));
       }
     };
-    function change(k, v) { GB.setPref(k, v); GB.applyPrefs(); if (['night', 'showSanskrit', 'wbwStyle', 'hideDevanagari', 'matchScript', 'doubleProgress', 'topRightIcon', 'pageButtons', 'showPageNumbers', 'diacritics', 'fixedDirection'].includes(k)) GB.reader.rerender(); if (k === 'night') GB.home.render(); if (k === 'layout') { if (GB.isWide()) document.body.classList.remove('reading'); GB.home.render(); window.dispatchEvent(new Event('resize')); } fill(); }
+    function change(k, v) { GB.setPref(k, v); GB.applyPrefs(); if (k === 'readMode') GB.reader.setMode(v); else if (['night', 'accent', 'second', 'secondLayout', 'wbwStyle', 'hideDevanagari', 'matchScript', 'doubleProgress', 'diacritics'].includes(k)) GB.reader.rerender(); if (k === 'accent') { GB.home.render(); GB.refreshAll(); } if (k === 'night') GB.home.render(); if (k === 'layout') { if (GB.isWide()) document.body.classList.remove('reading'); GB.home.render(); window.dispatchEvent(new Event('resize')); } fill(); }
     function choose(k, title, opts) {
       const body = h('div.choose', null, opts.map(([v, t]) => { const r = h('input', { type: 'radio', name: 'ch' + k }); r.checked = GB.prefs[k] == v; return h('label.choose-row', { onclick: () => { d.close(); change(k, v); } }, r, h('span', { text: t })); }));
-      const d = GB.ui.dialog({ title, body, buttons: [{ label: 'CANCEL', value: null }] });
+      const d = GB.ui.dialog({ title, body, buttons: [{ label: 'Cancel', value: null }] });
     }
     pg.refresh = fill; fill(); L.push(pg);
   };
@@ -279,7 +274,7 @@
     b.classList.toggle('night', !!P.night); b.classList.toggle('simplefont', !P.diacritics); b.dataset.align = P.textAlign;
     document.documentElement.style.setProperty('--fs', P.fontSize + 'px');
     document.documentElement.style.setProperty('--nfs', Math.max(12, Math.round(P.fontSize * 0.86)) + 'px');
-    const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = P.night ? '#0c151d' : '#7b5549';
+    const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = P.night ? '#111a1d' : '#22423a';
     const H = document.documentElement; H.classList.toggle('lay-m', P.layout === 'mobile'); H.classList.toggle('lay-d', P.layout === 'desktop');
     if (GB.screen) GB.screen.pref();
   };
@@ -288,7 +283,7 @@
   // ================= browsing history =================
   GB.historyPage = function () {
     const ex = L.find('history'); if (ex) { while (L.top() !== ex) L.pop(); ex.refresh(); return; }
-    const pg = GB.page({ kind: 'history', title: 'Browsing History', actions: [GB.hbtn('trash', 'Clear', async () => { if (await GB.ui.confirm('Browsing History', 'Clear the browsing history?')) { await GB.history.clear(); fill(); } })] });
+    const pg = GB.page({ kind: 'history', title: 'History', actions: [GB.hbtn('trash', 'Clear', async () => { if (await GB.ui.confirm('History', 'Clear the browsing history?')) { await GB.history.clear(); fill(); } })] });
     const fill = () => {
       pg.body.innerHTML = '';
       if (!GB.history.list.length) pg.body.append(h('div.help-row', { text: 'Texts you open will be listed here.' }));
@@ -305,10 +300,10 @@
   };
   GB.about = function () {
     const n = lib.books.length, f = lib.dbs.size;
-    GB.ui.dialog({ title: 'About App', body: h('div.about', null, img('gitabase_reader_icon.png', 'about-ic'),
-      h('p', null, h('b', { text: 'Gitabase Reader · web' })),
-      h('p', { text: 'A web recreation of Gitabase Reader 9 for Android. It runs offline from index.html; your gitabase files, notes and reading list stay in this browser.' }),
+    GB.ui.dialog({ title: 'About', body: h('div.about', null, img('gitabase_reader_icon.png', 'about-ic'),
+      h('p', null, h('b', { text: GB.APP_NAME })),
+      h('p', { text: 'A quiet reader for scripture: verse, word-for-word, translation and purport, with notes, topics and full-text search. It opens book files in the gitabase format and works offline; your files, notes and reading list stay in this browser.' }),
       h('p', { text: (lib.hosted ? 'Online library: ' : 'Library: ') + f + ' file(s), ' + n + ' book(s). Notes: ' + GB.notes.list.length + '.' }),
-      h('p.small', { text: 'SQLite 3.54.1 (WebAssembly) · fonts: Gaura Times, PT Sans Narrow, Roboto, Tiro Devanagari Hindi & Sanskrit, Noto Serif Devanagari.' })), buttons: [{ label: 'OK' }] });
+      h('p.small', { text: 'SQLite 3.54.1 (WebAssembly) · type: Gaura Times, Reader Display (from Noto Serif Display), Roboto, Tiro Devanagari Hindi & Sanskrit, Noto Serif Devanagari · icons and pictures drawn for this app.' })), buttons: [{ label: 'OK' }] });
   };
 })(window.GB);

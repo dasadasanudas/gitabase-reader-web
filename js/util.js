@@ -11,7 +11,7 @@ window.GB = window.GB || {};
     if (props) for (const k in props) {
       const v = props[k]; if (v == null || v === false) continue;
       if (k === 'class') { String(v).split(/\s+/).filter(Boolean).forEach(c => el.classList.add(c)); }
-      else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+      else if (k === 'style' && typeof v === 'object') { for (const sk in v) { if (sk.slice(0, 2) === '--') el.style.setProperty(sk, v[sk]); else el.style[sk] = v[sk]; } }
       else if (k === 'html') el.innerHTML = v;
       else if (k === 'text') el.textContent = v;
       else if (k.slice(0, 2) === 'on' && typeof v === 'function') el.addEventListener(k.slice(2), v);
@@ -157,11 +157,11 @@ window.GB = window.GB || {};
     return { el: box, body, close, result: p };
   }
   function confirmDlg(title, text, ok, cancel) {
-    return dialog({ title, text, buttons: [{ label: cancel || 'CANCEL', value: false }, { label: ok || 'OK', value: true }] }).result;
+    return dialog({ title, text, buttons: [{ label: cancel || 'Cancel', value: false }, { label: ok || 'OK', value: true }] }).result;
   }
   function promptDlg(title, value, hint) {
     const inp = h('input.dlg-input', { type: 'text', value: value || '', placeholder: hint || '' });
-    const d = dialog({ title, body: inp, buttons: [{ label: 'CANCEL', value: null }, { label: 'OK', onClick: () => {} }] });
+    const d = dialog({ title, body: inp, buttons: [{ label: 'Cancel', value: null }, { label: 'OK', onClick: () => {} }] });
     const okBtn = d.el.querySelectorAll('.dlg-btn')[1];
     let result = null;
     okBtn.onclick = () => { result = inp.value; d.close(result); };
@@ -178,7 +178,7 @@ window.GB = window.GB || {};
   GB.ui = {
     toast, menu, closeMenus, sheet, dialog, confirm: confirmDlg, prompt: promptDlg,
     pushEsc(fn) { escStack.push(fn); }, popEsc(fn) { const i = escStack.lastIndexOf(fn); if (i >= 0) escStack.splice(i, 1); },
-    handleEsc() { const fn = escStack[escStack.length - 1]; if (fn) { fn(); return true; } return false; }
+    handleEsc() { if (document.querySelector('.popmenu')) { closeMenus(); return true; } const fn = escStack[escStack.length - 1]; if (fn) { fn(); return true; } return false; }
   };
   Object.assign(GB, { $, $$, h, esc, decodeEnt, stripTags, fold, debounce, sleep, DEV, fmtDate, fmtDuration, fmtSize, uid, download, pickFiles, copyText, img });
 })(window.GB);
