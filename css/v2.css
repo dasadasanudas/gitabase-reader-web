@@ -381,3 +381,9 @@ body:not(.night) .rc-d { color: #303a49; }
 .rc-src { display: none !important; }
 .rc-nw { white-space: nowrap; }
 @container rdpane (max-width: 520px) { .rc-d { font-size: 1.06em; } .rc { gap: 12px; } }
+/* no scrollbars on the breadcrumb or the verse pager */
+html .crumbs, html.desk .crumbs, html .rd-pager, html.desk .rd-pager { scrollbar-width: none; }
+.rd-pager::-webkit-scrollbar { display: none; }
+.vtools { justify-content: flex-end; }
+@media (prefers-reduced-motion: no-preference) { .vt.t-in { animation: gb-pop .22s cubic-bezier(.2,.8,.2,1); } }
+.canto-n { margin-top: 4px; }
