@@ -167,3 +167,4 @@ html.desk .sheet.rpsheet { width: 380px; max-height: calc(100vh - 70px); transfo
 html.desk .sheet-scrim.on .sheet.rpsheet { transform: none; }
 html.desk .sheet.rpsheet .sheet-title { padding: 14px 18px 6px; }
 html.desk .sheet.gvsheet { width: 440px; }
+html.desk #deskModal { z-index: 45; }   /* below #overlays (50): pickers, dialogs and toasts opened from Settings show on top */
