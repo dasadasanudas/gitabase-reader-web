@@ -22,7 +22,7 @@
     const st = { tab: 'contents', song: song != null ? String(song) : null };
     const existing = L.top(); if (existing && existing.kind === 'book' && existing.B === B) { existing.st.song = st.song; existing.st.tab = 'contents'; existing.refresh(); return; }
     const pg = GB.page({ kind: 'book', title: B.author || B.title, subtitle: B.author ? B.title : '', cls: 'bookpage',
-      actions: [GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => bookMenu(e.currentTarget, B, st, pg))] });
+      actions: [GB.canGoto(B) ? GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({ B })) : null, GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => bookMenu(e.currentTarget, B, st, pg))].filter(Boolean) });
     pg.B = B; pg.st = st;
     const tabs = h('div.btabs'); pg.el.insertBefore(tabs, pg.body);
     pg.refresh = () => render(pg, B, st, tabs);
@@ -32,7 +32,7 @@
     const rd = GB.reading.get(B);
     GB.ui.menu(anchor, [
       rd ? { label: 'Continue reading', icon: 'ic_bookmark_open.png', onClick: () => GB.reader.openSaved(B, rd) } : null,
-      { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({ B }) },
+      GB.canGoto(B) ? { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({ B }) } : null,
       GB.offline && GB.offline.can(B) ? { label: GB.offline.has(B) ? 'Saved for offline ✓' : 'Save for offline', icon: 'download', onClick: () => GB.offline.download(B) } : null,
       rd ? { label: 'Clear bookmark', icon: 'ic_remove_bookmark.png', onClick: async () => { await GB.reading.remove(B.key); pg.refresh(); } } : null,
       { label: GB.parts.sanskritOn() ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.parts.toggleSanskrit(); GB.reader.rerender(); } },
@@ -130,8 +130,9 @@
   GB.chapter.open = async function (B, ch, focusI, autoOpen) {
     const top = L.top(); if (top && top.kind === 'chapter') L.pop();
     const prog = h('div.rprog', null, h('i'));
-    const pg = GB.page({ kind: 'chapter', title: B.title, subtitle: lib.chapterLabel(B, ch) + ' ' + (ch.title || ''), under: prog,
-      actions: [GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => chapterMenu(e.currentTarget, B, ch))] });
+    const under = h('div.under-wrap', null, GB.crumbs(B, ch, null, 'chapter'), prog);
+    const pg = GB.page({ kind: 'chapter', title: B.title, subtitle: lib.chapterLabel(B, ch) + ' ' + (ch.title || ''), under,
+      actions: [GB.canGoto(B) ? GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({ B, ch })) : null, GB.hbtn('search', 'Search in this book', () => GB.search.dialog({ book: B })), GB.hbtn('more', 'Menu', e => chapterMenu(e.currentTarget, B, ch))].filter(Boolean) });
     pg.B = B; pg.ch = ch;
     L.push(pg);
     { const w = document.createElement('div'); w.className = 'sk-wrap'; w.append(GB.skeletonRows(9), GB.loader('gb-loader-list')); pg.body.append(w); }
@@ -169,12 +170,12 @@
       { label: 'History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() },
       { label: 'Go to bookmark', icon: 'ic_bookmark_open.png', onClick: () => { const rd = GB.reading.get(B); if (rd) GB.reader.openSaved(B, rd); else GB.ui.toast('No bookmark in this book yet'); } },
       { label: 'Library', icon: 'ic_menu_books.png', onClick: () => L.home('L') },
-      { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({ B, ch }) },
+      GB.canGoto(B) ? { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({ B, ch }) } : null,
       { label: GB.parts.sanskritOn() ? 'Hide Sanskrit' : 'Show Sanskrit', icon: 'ic_menu_sanskrit.png', onClick: () => { GB.parts.toggleSanskrit(); GB.reader.rerender(); } },
       { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
       { label: 'All notes in this book', icon: 'ic_menu_list.png', onClick: () => GB.bookNotes(B) },
       { label: 'Settings', icon: 'ic_mmenu_settings.png', onClick: () => GB.settingsPage() },
       { label: 'Larger text', icon: 'ic_action_inct.png', onClick: () => GB.fontStep(1) },
-      { label: 'Smaller text', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }]);
+      { label: 'Smaller text', icon: 'ic_menu_dec_font.png', onClick: () => GB.fontStep(-1) }].filter(Boolean));
   }
 })(window.GB);

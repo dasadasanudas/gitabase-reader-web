@@ -64,16 +64,24 @@
   };
 
   // ================= go to verse: canto . chapter . verse boxes, jumps as soon as a number changes =================
+  // go to verse exists only for the three verse works
+  const GOTO = { BG: 1, SB: 1, CC: 1 };
+  GB.canGoto = B => !!(B && (GOTO[B.abbr] || GOTO[String(B.type || '').toUpperCase()]));
+  GB.gotoBooks = () => lib.books.filter(GB.canGoto);
   function verseBooks(lang) {
     const seen = new Map();
-    for (const B of lib.books) { const k = B.abbr || B.key; if (!seen.has(k) || (B.lang === lang && seen.get(k).lang !== lang)) seen.set(k, B); }
+    for (const B of lib.books) { if (!GB.canGoto(B)) continue; const k = B.abbr || B.key; if (!seen.has(k) || (B.lang === lang && seen.get(k).lang !== lang)) seen.set(k, B); }
     return Array.from(seen.values());
   }
   const lastNum = no => { const m = String(no).match(/(\d+)(?!.*\d)/); return m ? Number(m[1]) : 0; };
   const firstNum = no => { const m = String(no).match(/\d+/); return m ? Number(m[0]) : 0; };
   GB.gotoVerse = async function (ctx) {
     ctx = ctx || {}; const R = GB.reader; const cur = R.current();
-    let B = ctx.B || (cur && cur.B) || lib.books[0]; if (!B) { GB.ui.toast('No books yet'); return; }
+    const last = () => { const e = Array.from(GB.reading.map.values()).filter(x => GB.canGoto(lib.book(x.id))).sort((a, b) => (b.lastOpened || 0) - (a.lastOpened || 0))[0]; return e ? lib.book(e.id) : null; };
+    const lang = GB.home && GB.home.curLang ? GB.home.curLang() : '';
+    let B = [ctx.B, cur && cur.B].find(GB.canGoto) || last() || GB.gotoBooks().find(x => !lang || x.lang === lang) || GB.gotoBooks()[0];
+    if (!B) { GB.ui.toast('Go to verse works in Bhagavad-gītā, Śrīmad-Bhāgavatam and Caitanya-caritāmṛta'); return; }
+    if (ctx.B !== B) ctx = {};
     const box = h('div.gv'); const s = GB.ui.sheet({ title: 'Go to verse', content: box, cls: 'gvsheet' });
     let st = null, seq = 0;
     const songsOf = B => B.hasSongs ? B.songs.map(x => x.song) : Array.from(new Set(B.chapters.map(c => String(c.song)))).filter(x => x && x !== 'null' && x !== '0');
@@ -260,4 +268,67 @@
     pg.refresh = fill; fill(); L.push(pg);
   };
   const ap = GB.applyPrefs; GB.applyPrefs = function () { ap(); GB.applyAccent(); };
+
+  // ================= breadcrumb: Library › book › canto › chapter › verse; every crumb but the last steps back there =================
+  const songName = (B, song) => { const so = (B.songs || []).find(x => String(x.song) === String(song)); return so && so.name && !/^\d+$/.test(so.name) && GB.ut(so.name).length <= 14 ? GB.ut(so.name) : (B.lang === 'hin' ? 'स्कन्ध ' : 'Canto ') + song; };
+  const bookShort = B => B.abbr && B.abbr.length <= 4 && GB.canGoto(B) ? B.abbr : (GB.ut(B.title).length > 22 ? GB.ut(B.title).slice(0, 20) + '…' : GB.ut(B.title));
+  GB.navTo = async function (lvl, B, song, ch, i) {
+    if (!GB.isWide() && document.body.classList.contains('reading')) GB.reader.close();
+    if (GB.desk && GB.desk.collapsed()) GB.desk.expand();
+    L.home('L'); if (lvl === 'lib') return;
+    GB.book.open(B, lvl === 'book' ? null : song);
+    if (lvl === 'chapter') await GB.chapter.open(B, ch, i);
+  };
+  // at: 'chapter' (chapter page) or 'verse' (reader)
+  GB.crumbs = function (B, ch, row, at) {
+    const nav = h('nav.crumbs', { 'aria-label': 'You are here' });
+    const songOn = B.hasSongs && ch && ch.song != null && String(ch.song) !== '' && String(ch.song) !== 'null';
+    const items = [['Library', () => GB.navTo('lib')], [bookShort(B), () => GB.navTo('book', B)]];
+    if (songOn) items.push([songName(B, ch.song), () => GB.navTo('song', B, String(ch.song))]);
+    if (ch) items.push([Number(ch.ch) === 0 ? GB.ut(ch.title || 'Intro').slice(0, 18) : (B.lang === 'hin' ? 'अध्याय ' : 'Ch ') + ch.ch, at === 'verse' ? () => GB.navTo('chapter', B, String(ch.song), ch, GB.reader.current() ? GB.reader.current().i : null) : null]);
+    if (at === 'verse' && row) items.push([lib.label(B, ch.song, ch.ch, row.no).split(' ').pop(), null]);
+    items.forEach(([t, go], k) => {
+      if (k) nav.append(h('span.cr-sep', { 'aria-hidden': 'true', text: '›' }));
+      const last = k === items.length - 1;
+      nav.append(last || !go ? h('span.cr' + (last ? '.cur' : ''), { text: t, 'aria-current': last ? 'location' : null }) : h('button.cr', { type: 'button', text: t, onclick: e => { e.stopPropagation(); go(); } }));
+    });
+    requestAnimationFrame(() => { nav.scrollLeft = nav.scrollWidth; });
+    return nav;
+  };
+
+  // ================= now-reading bar (phones): the verse you are on stays one tap away =================
+  const NB = GB.nowbar = {};
+  let nbEl = null, nbBusy = false;
+  const lastEntry = () => Array.from(GB.reading.map.values()).filter(x => lib.book(x.id)).sort((a, b) => (b.lastOpened || 0) - (a.lastOpened || 0))[0] || null;
+  async function nbStep(dir) {
+    if (nbBusy) return; const e = lastEntry(); if (!e) return; const B = lib.book(e.id); nbBusy = true;
+    try {
+      const ch = lib.findChapter(B, e.song, e.ch) || B.chapters[0]; const rows = await lib.chapterTexts(B, ch); const i = Math.max(0, lib.findTextIndex(rows, e.no));
+      const n = await lib.neighbour(B, ch, i, dir); if (!n) { GB.ui.toast(dir > 0 ? 'Last verse of the book' : 'First verse of the book'); return; }
+      const rows2 = n.ch === ch ? rows : await lib.chapterTexts(B, n.ch);
+      nbEl.classList.remove('step-l', 'step-r'); void nbEl.offsetWidth; nbEl.classList.add(dir > 0 ? 'step-r' : 'step-l');
+      await GB.reading.touch(B, n.ch, n.i, n.row, rows2.length, { scroll: 0 });
+    } finally { nbBusy = false; }
+  }
+  NB.sync = function () {
+    if (!nbEl) {
+      nbEl = h('div#nowbar', { role: 'region', 'aria-label': 'Now reading' });
+      document.body.append(nbEl);
+    }
+    const e = lastEntry(); const show = !!e && !document.documentElement.classList.contains('desk') && GB.prefs.nowBar !== false;
+    document.body.classList.toggle('has-now', show); nbEl.classList.toggle('on', show);
+    if (!e) { nbEl.innerHTML = ''; return; }
+    const B = lib.book(e.id); const key = e.id + '|' + e.label + '|' + (e.preview || '').length;
+    if (nbEl.dataset.k === key) return; nbEl.dataset.k = key; nbEl.innerHTML = '';
+    const ch = lib.findChapter(B, e.song, e.ch);
+    const where = ch && B.hasSongs ? songName(B, ch.song) : GB.ut(e.chTitle || '').slice(0, 30);
+    nbEl.append(
+      h('button.nb-main', { type: 'button', title: 'Open the reader', onclick: () => GB.reader.openSaved(B, lastEntry()) },
+        h('span.nb-cover', { text: (B.abbr || GB.ut(B.title).slice(0, 2)).slice(0, 3) }),
+        h('span.nb-txt', null, h('span.nb-ref', null, h('b', { text: e.label }), where ? h('span', { text: ' · ' + where }) : null), h('span.nb-prev' + (/[\u0900-\u097F]/.test(e.preview || '') ? '.devui' : ''), { text: GB.ut(e.preview || '').slice(0, 120) }))),
+      h('button.nb-b', { type: 'button', title: 'Previous verse', 'aria-label': 'Previous verse', onclick: () => nbStep(-1), html: GB.icons.svg('chevL') || '‹' }),
+      h('button.nb-b', { type: 'button', title: 'Next verse', 'aria-label': 'Next verse', onclick: () => nbStep(1), html: GB.icons.svg('chevR') || '›' }));
+  };
+  document.addEventListener('gb:reading', () => NB.sync());
+  window.addEventListener('gb:layout', () => NB.sync());
 })(window.GB);

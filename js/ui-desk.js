@@ -38,10 +38,30 @@
     if (m) m.classList.toggle('on', desk && L.stack.some(p => m.contains(p.el)));
   }
 
+  // sidebar collapse: rail button, the reader's toolbar button, or Ctrl/⌘ + \ ; tapping a tab opens it again
+  const D = GB.desk = {};
+  D.collapsed = () => H.classList.contains('desk') && H.classList.contains('side-off');
+  function setCollapsed(on, save) {
+    H.classList.toggle('side-off', !!on); if (save !== false) GB.setPref('sideCollapsed', !!on);
+    document.querySelectorAll('.side-tog').forEach(b => { b.title = on ? 'Show sidebar (Ctrl+\\)' : 'Hide sidebar (Ctrl+\\)'; b.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+    const l = $('#left'); if (l) l.inert = !!on && H.classList.contains('desk');
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 280);
+  }
+  D.toggle = () => setCollapsed(!H.classList.contains('side-off'));
+  D.expand = () => { if (H.classList.contains('side-off')) setCollapsed(false); };
+  D.toggleBtn = () => h('button.hdr-btn.side-tog', { type: 'button', title: (H.classList.contains('side-off') ? 'Show' : 'Hide') + ' sidebar (Ctrl+\\)', 'aria-label': 'Toggle sidebar', 'aria-pressed': H.classList.contains('side-off') ? 'true' : 'false', onclick: D.toggle, html: GB.icons.svg('sidebar') });
+  function railBtn() {
+    const r = $('#rail'); if (!r || r.querySelector('.rail-side')) return;
+    if (!r.dataset.sideHook) { r.dataset.sideHook = '1'; new MutationObserver(() => { if (!r.querySelector('.rail-side')) railBtn(); }).observe(r, { childList: true }); }
+    r.append(h('button.rail-side.side-tog', { type: 'button', title: 'Hide sidebar (Ctrl+\\)', 'aria-label': 'Toggle sidebar', onclick: D.toggle, html: GB.icons.svg('sidebar') }));
+  }
+  document.addEventListener('click', e => { if (e.target.closest && e.target.closest('#rail .tab')) D.expand(); });
+  document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === '\\' && H.classList.contains('desk')) { e.preventDefault(); D.toggle(); } });
+
   let last = null;
   GB.deskSync = function () {
     const d = !!GB.isWide(); applySide();
-    if (d !== last) { last = d; H.classList.toggle('desk', d); if (d) grip(); rehome(); window.dispatchEvent(new Event('gb:layout')); }
+    if (d !== last) { last = d; H.classList.toggle('desk', d); if (d) { grip(); railBtn(); setCollapsed(!!GB.prefs.sideCollapsed, false); } else { const l = $('#left'); if (l) l.inert = false; } rehome(); window.dispatchEvent(new Event('gb:layout')); }
   };
   window.addEventListener('resize', GB.debounce ? GB.debounce(GB.deskSync, 60) : GB.deskSync);
   const ap = GB.applyPrefs; GB.applyPrefs = function () { ap(); GB.deskSync(); };

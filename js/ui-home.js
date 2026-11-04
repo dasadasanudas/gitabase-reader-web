@@ -36,9 +36,16 @@
   L.replaceTop = page => { if (L.stack.length > 1) { const p = L.stack.pop(); p.el.remove(); if (p.onClose) p.onClose(); } return L.push(page); };
   L.pop = () => {
     if (L.stack.length <= 1) return false;
-    const p = L.stack.pop(); p.el.remove(); if (p.onClose) p.onClose();
+    const p = L.stack.pop(); if (p.onClose) p.onClose(); leave(p.el);
     const t = L.top(); t.el.classList.remove('under'); if (t.refresh) t.refresh(); chrome(); syncModal(); return true;
   };
+  // a popped page slides out before it is removed (no delay when motion is reduced)
+  const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function leave(el) {
+    if (calm() || !el.isConnected || el.classList.contains('dm-page')) { el.remove(); return; }
+    el.classList.add('out'); el.inert = true; let done = false; const fin = () => { if (!done) { done = true; el.remove(); } };
+    el.addEventListener('animationend', fin, { once: true }); setTimeout(fin, 260);
+  }
   L.home = tab => {
     while (L.stack.length > 1) { const p = L.stack.pop(); p.el.remove(); if (p.onClose) p.onClose(); }
     L.top().el.classList.remove('under');
@@ -48,7 +55,9 @@
   L.find = kind => L.stack.find(p => p.kind === kind);
   function chrome() {
     document.body.classList.toggle('at-home', L.stack.length <= 1);
-    $$('#rail .tab').forEach(t => t.classList.toggle('on', L.stack.length <= 1 && t.dataset.tab === HOME.tab));
+    const deskOn = document.documentElement.classList.contains('desk');
+    $$('#rail .tab').forEach(t => t.classList.toggle('on', (L.stack.length <= 1 || !deskOn) && t.dataset.tab === HOME.tab));
+    if (GB.nowbar) GB.nowbar.sync();
   }
   GB.chrome = chrome;
   // generic page with an app title bar
@@ -99,7 +108,7 @@
     L.stack = []; $('#left').innerHTML = ''; L.push({ el: homeEl, kind: 'home', refresh: () => HOME.render() });
     HOME.render();
   };
-  HOME.select = tab => { HOME.tab = OLD_TAB[tab] || tab; HOME.render(); chrome(); bodyEl.scrollTop = 0; };
+  HOME.select = tab => { HOME.tab = OLD_TAB[tab] || tab; HOME.render(); chrome(); bodyEl.scrollTop = 0; bodyEl.classList.add('tab-in'); };
   HOME.render = function () {
     if (OLD_TAB[HOME.tab]) HOME.tab = OLD_TAB[HOME.tab];
     renderHeader();
@@ -113,9 +122,10 @@
     const t = { L: 'Library', N: 'Notebook', S: 'Search' }[HOME.tab];
     hdrEl.append(h('div.hdr-title', { text: t }));
     const right = h('div.hdr-right');
-    if (HOME.tab === 'L') right.append(GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({})), GB.hbtn('search', 'Search', () => L.home('S')));
+    const canGo = GB.gotoBooks && GB.gotoBooks().length;
+    if (HOME.tab === 'L') { if (canGo) right.append(GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({}))); right.append(GB.hbtn('search', 'Search', () => L.home('S'))); }
     if (HOME.tab === 'N') right.append(GB.hbtn('plus', 'New', e => newMenu(e.currentTarget)));
-    if (HOME.tab === 'S') right.append(GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({})));
+    if (HOME.tab === 'S' && canGo) right.append(GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse({})));
     hdrEl.append(right);
   }
   function curLang() { const ls = lib.langs(); if (GB.prefs.lang === '*') return ''; if (ls.includes(GB.prefs.lang)) return GB.prefs.lang; return ''; }
@@ -129,7 +139,7 @@
     const notesIO = [{ label: 'Back up notes', icon: 'ic_save_to_cloud.png', onClick: () => GB.notes.backup() }, { label: 'Restore notes', icon: 'ic_open_from_cloud.png', onClick: () => GB.restoreUI() }];
     const items = [{ header: true, label: GB.APP_NAME },
       { label: 'History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() },
-      { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({}) },
+      GB.gotoBooks && GB.gotoBooks().length ? { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse({}) } : null,
       lib.hosted ? null : { label: 'Add books', icon: 'ic_plus_orange.png', onClick: () => GB.addFilesUI() },
       { label: GB.prefs.night ? 'Day theme' : 'Night theme', icon: GB.prefs.night ? 'ic_sun.png' : 'ic_menu_night.png', onClick: GB.toggleNight },
       { label: 'Notes', icon: 'notebook', sub: notesIO.concat(HOME.tab === 'N' ? [{ label: 'Export all as Markdown', icon: 'export', onClick: () => GB.exportNotes(null) }] : []) },
@@ -354,7 +364,7 @@
       h('div.s-scope', { role: 'group', 'aria-label': 'Where' }, S_SCOPE.map(([k, t]) => h('button.chip2' + ((HOME.sScope || scope) === k ? '.on' : ''), { type: 'button', onclick: () => { HOME.sScope = k; HOME.render(); } }, t)),
         h('button.s-opt', { type: 'button', onclick: () => GB.search.dialog({ q: inp.value.trim() }) }, 'More options'))));
     const jump = h('div.s-jump'), words = h('div.s-words'), hist = h('div.s-hist');
-    body.append(h('button.s-goto', { type: 'button', onclick: () => GB.gotoVerse({}) }, ico('goto'), h('span', null, h('b', { text: 'Go to verse' }), h('span', { text: 'Canto · chapter · verse' })), h('span.rp-arr', { text: '›' })), jump, words, hist);
+    body.append(GB.gotoBooks && GB.gotoBooks().length ? h('button.s-goto', { type: 'button', onclick: () => GB.gotoVerse({}) }, ico('goto'), h('span', null, h('b', { text: 'Go to verse' }), h('span', { text: 'BG · SB · CC' })), h('span.rp-arr', { text: '›' })) : '', jump, words, hist);
     const histList = await GB.store.kvGet('searchHistory', []);
     const run = GB.debounce(async () => {
       sQ = inp.value.trim(); jump.innerHTML = ''; words.innerHTML = ''; hist.innerHTML = '';

@@ -7,7 +7,7 @@
   const { h, $, img } = GB;
   const lib = GB.lib, L = GB.left;
   const R = GB.reader = {};
-  let root, el, head, prog, sbar, pager, slots, contEl, loadingEl, drawer, scrim, emptyEl, selbar, hint;
+  let crumbEl, root, el, head, prog, sbar, pager, slots, contEl, loadingEl, drawer, scrim, emptyEl, selbar, hint;
   let cur = null, prevPos = null, nextPos = null, needles = null, sIdx = 0, sCount = 0, hz = false, ignore = 0, busy = false;
   const textCache = new Map();
   const N = () => (GB.prefs.night ? '_d' : '_o');
@@ -28,7 +28,8 @@
     const eL = h('button.rd-edge.l', { title: 'Previous text (←)', onclick: () => go(-1) }, img('ic_go_left.png')), eR = h('button.rd-edge.r', { title: 'Next text (→)', onclick: () => go(1) }, img('ic_go_right.png'));
     loadingEl = h('div.rd-loading', { hidden: true }, GB.loader());
     scrim = h('div.rd-scrim', { hidden: true, onclick: closeDrawer }); drawer = h('div.rd-drawer');
-    el = h('div.rd', { hidden: true }, head, prog, sbar, h('div.rd-stage', null, pager, contEl, eL, eR, loadingEl), scrim, drawer);
+    crumbEl = h('div.rd-crumbs');
+    el = h('div.rd', { hidden: true }, head, crumbEl, prog, sbar, h('div.rd-stage', null, pager, contEl, eL, eR, loadingEl), scrim, drawer);
     root.append(emptyEl, el);
     let t = null;
     pager.addEventListener('scroll', () => { if (ignore) return; clearTimeout(t); t = setTimeout(settle, 160); }, { passive: true });
@@ -38,6 +39,8 @@
     document.addEventListener('selectionchange', GB.debounce(onSel, 200));
     setInterval(() => { if (cur && !el.hidden && document.visibilityState === 'visible' && (GB.isWide() || document.body.classList.contains('reading'))) GB.reading.addTime(cur.B, 15000); }, 15000);
     window.addEventListener('resize', GB.debounce(() => { if (cur && !contOn()) { center(); if (hz) hzLayout(); } }, 120));
+    // keep the current verse in place while the sidebar animates open or closed
+    if (window.ResizeObserver) new ResizeObserver(() => { if (cur && !contOn() && !busy) center(); }).observe(pager);
     icons();
   };
   function icons() {
@@ -60,6 +63,7 @@
       cur = { B, ch, i, row: rows[i], rows };
       hz = !isVerseBook(B);   // books of verses scroll; small books page horizontally
       await renderAll(opts);
+      { const v = scrollOf(slots[1]).firstChild; if (v && !contOn()) { v.classList.remove('v-in'); void v.offsetWidth; v.classList.add('v-in'); } }
       await GB.reading.touch(B, ch, i, rows[i], rows.length, { mode: hz ? 'horizontal' : contOn() ? 'cont' : 'vertical' });
       GB.history.add(B, ch, rows[i]); setHash(); GB.chapter.markCurrent(); syncHome();
       if (hz) maybeHint();
@@ -273,9 +277,12 @@
     head.innerHTML = ''; const { B } = cur;
     head.append(h('button.hdr-logo', { title: 'Contents', onclick: openDrawer }, img('headermenuicon.png')),
       h('div.t2.rd-titles', { title: 'Show/Hide Sanskrit', onclick: () => { GB.parts.toggleSanskrit(); R.rerender(); } },
-        h('div.t2a', null, h('span.tri', { text: '▾' }), GB.ut(B.title)), h('div.t2b', { text: GB.ut(refText()) })));
+        h('div.t2a', null, h('span.tri', { text: '▾' }), GB.ut(B.title)), h('div.t2b', { text: GB.ut(Number(cur.ch.ch) === 0 ? refText() : (cur.ch.title || refText())) })));
+    if (GB.desk) head.prepend(GB.desk.toggleBtn());
+    crumbEl.replaceChildren(GB.crumbs(B, cur.ch, cur.row, 'verse'));
     const right = h('div.hdr-right');
     if (!GB.isWide()) right.append(GB.hbtn('back', 'Back', () => GB.back(), 'rd-back'));
+    if (GB.canGoto(B)) right.append(GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse(cur), 'rd-goto'));
     right.append(h('button.hdr-btn.hdr-aa', { title: 'Reading options', 'aria-label': 'Reading options', onclick: () => GB.readPanel() }, h('span.aa', { text: 'Aa' })));
     right.append(h('div.more-wrap', null, GB.hbtn('more', 'Menu', e => textMenu(e.currentTarget)), h('span.pagenum')));
     head.append(right); pageNum();
@@ -297,7 +304,6 @@
     const P = GB.prefs;
     GB.ui.menu(anchor, [
       { label: 'Reading options', icon: 'font', onClick: () => GB.readPanel() },
-      { label: 'Go to verse', icon: 'goto', onClick: () => GB.gotoVerse(cur) },
       { label: 'Set bookmark', icon: 'ic_bookmark.png', onClick: bookmark },
       { label: 'Search in this book', icon: 'cab_search.png', onClick: () => GB.search.dialog({ book: cur.B }) },
       { label: 'History', icon: 'ic_screen_manager.png', onClick: () => GB.historyPage() },
