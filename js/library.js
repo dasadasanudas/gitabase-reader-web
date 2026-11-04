@@ -9,12 +9,27 @@
   lib.has = has; lib.q = q;
   const LANGS = { en: 'eng', hi: 'hin', ru: 'rus', bn: 'ben', uk: 'ukr', de: 'ger', fr: 'fre', es: 'spa', it: 'ita', pt: 'por', lv: 'lat', sa: 'san', gu: 'guj', ta: 'tam', te: 'tel', ml: 'mal', kn: 'kan', mr: 'mar', or: 'ori', zh: 'chi', ja: 'jpn', pl: 'pol', cs: 'cze', hu: 'hun', bg: 'bul', ka: 'geo', et: 'est', lt: 'lit', ne: 'nep' };
   lib.LANG_NAMES = { eng: 'English', hin: 'हिन्दी', rus: 'Русский', ben: 'বাংলা', ukr: 'Українська', ger: 'Deutsch', fre: 'Français', spa: 'Español', san: 'संस्कृतम्', guj: 'ગુજરાતી', mar: 'मराठी', nep: 'नेपाली' };
-  function detectLang(locale, sample) {
-    if (/[\u0900-\u097F]/.test(sample)) return /[\u0900-\u097F]/.test(sample) && !/[a-z]{4}/i.test(sample.replace(/<[^>]+>/g, '')) ? 'hin' : 'hin';
-    if (/[\u0980-\u09FF]/.test(sample)) return 'ben';
-    if (/[\u0400-\u04FF]/.test(sample)) return /[їєі]/i.test(sample) ? 'ukr' : 'rus';
+  // language of a file: the file name says it when it can (gitabase_texts_eng.db, bhagavatam_hi_canto1.db), else the script
+  // most of its text is written in (one Cyrillic author name must not make an English file Russian), else the locale
+  const NAME_LANG = { eng: 'eng', en: 'eng', rus: 'rus', ru: 'rus', hin: 'hin', hi: 'hin', ben: 'ben', bn: 'ben', ukr: 'ukr', ua: 'ukr', uk: 'ukr',
+    ger: 'ger', de: 'ger', fre: 'fre', fr: 'fre', spa: 'spa', es: 'spa', guj: 'guj', gu: 'guj', mar: 'mar', nep: 'nep', san: 'san' };
+  function nameLang(name) {
+    const parts = String(name || '').toLowerCase().replace(/\.[a-z0-9]+$/, '').split(/[^a-z]+/).filter(Boolean);
+    for (let i = parts.length - 1; i >= 0; i--) if (NAME_LANG[parts[i]]) return NAME_LANG[parts[i]];
+    return '';
+  }
+  function detectLang(locale, sample, name) {
+    const n = nameLang(name); if (n) return n;
+    const t = String(sample || '').replace(/<[^>]+>/g, ' ').replace(/&#?\w+;/g, ' ');
+    const count = re => (t.match(re) || []).length;
+    const dev = count(/[\u0900-\u097F]/g), ben = count(/[\u0980-\u09FF]/g), cyr = count(/[\u0400-\u04FF]/g), lat = count(/[A-Za-z]/g);
+    const top = Math.max(dev, ben, cyr, lat);
+    if (top > 0 && top === dev) return 'hin';
+    if (top > 0 && top === ben) return 'ben';
+    if (top > 0 && top === cyr) return /[їєі]/i.test(t) ? 'ukr' : 'rus';
     const l = String(locale || '').slice(0, 2).toLowerCase();
-    return LANGS[l] || l || 'eng';
+    const L = LANGS[l] || l;
+    return top > 0 && top === lat && ['rus', 'ukr', 'hin', 'ben'].includes(L) ? 'eng' : (L || 'eng');
   }
   const num = v => (v === null || v === undefined || v === '' ? NaN : Number(v));
   // match a column that may hold the value as INTEGER or TEXT (gitabase files are not consistent)
@@ -28,8 +43,8 @@
     const bc = (D.tables.books || []).filter(c => c !== 'desc' || true);
     const books = await q(D, 'SELECT ' + bc.map(c => '"' + c + '"').join(',') + ' FROM books ORDER BY sort, _id');
     let sample = books.map(b => (b.title || '') + ' ' + (b.author || '')).join(' ');
-    try { const r = await q(D, 'SELECT substr(transl2,1,400) AS t FROM texts WHERE length(transl2) > 20 LIMIT 1 OFFSET 3'); if (r[0]) sample += ' ' + r[0].t; } catch (e) {}
-    D.lang = detectLang(locale, sample); D.locale = locale;
+    try { const r = await q(D, 'SELECT substr(transl2,1,400) AS t FROM texts WHERE length(transl2) > 20 LIMIT 6 OFFSET 3'); for (const x of r) sample += ' ' + x.t; } catch (e) {}
+    D.lang = detectLang(locale, sample, rec.name); D.locale = locale;
     try { const r = await q(D, "SELECT translit || comment AS t FROM texts WHERE length(comment) > 50 LIMIT 1 OFFSET 5"); D.entityMode = !!(r[0] && /&#\d+;/.test(r[0].t || '')); } catch (e) { D.entityMode = false; }
     D.songs = has(D, 'songs') ? await q(D, 'SELECT * FROM songs ORDER BY book_id, sort, _id') : [];
     D.chapters = has(D, 'chapters') ? await q(D, 'SELECT _id, book_id, song, number, title, text_size, purport_size, prev_size_t, prev_size_p FROM chapters ORDER BY book_id, _id') : [];
