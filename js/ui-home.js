@@ -17,21 +17,35 @@
   const PILL = new Map();
   GB.pill = function (el, key) {
     el.classList.add('has-pill'); const p = document.createElement('i'); p.className = 'pill'; el.prepend(p);
+    let motion = null;
     const place = anim => {
       const on = el.querySelector(':scope > .on'); if (!on || !el.isConnected) return false;
       const box = { x: on.offsetLeft, w: on.offsetWidth, y: on.offsetTop, hgt: on.offsetHeight }; if (!box.w) return false;
-      // glide only when the user picked another option; a re-render (theme switch, resize) just places it
-      const idx = Array.prototype.indexOf.call(el.children, on); const last = PILL.get(key);
-      const set = b => { p.style.width = b.w + 'px'; p.style.height = b.hgt + 'px'; p.style.transform = 'translate(' + b.x + 'px,' + b.y + 'px)'; };
-      if (anim && last && last.idx !== idx && last.w) {
-        const from = { x: last.x, y: box.y, w: last.w, hgt: box.hgt };
-        p.style.transition = 'none'; set(from); p.getBoundingClientRect(); p.style.transition = ''; requestAnimationFrame(() => set(box));
-      } else { p.style.transition = 'none'; set(box); p.getBoundingClientRect(); p.style.transition = ''; }
+      const idx = Array.prototype.indexOf.call(el.children, on), last = PILL.get(key);
+      const transform = b => 'translate(' + b.x + 'px,' + b.y + 'px)';
+      // ResizeObserver also fires on attachment. Ignore identical geometry so it cannot cancel a glide.
+      const same = last && last.idx === idx && last.x === box.x && last.y === box.y && last.w === box.w && last.hgt === box.hgt;
+      if (!anim && same && el.classList.contains('pill-on')) return true;
+      if (motion) { motion.cancel(); motion = null; }
+      p.style.setProperty('transition', 'none', 'important');
+      p.style.width = box.w + 'px'; p.style.height = box.hgt + 'px'; p.style.transform = transform(box);
+      if (anim && last && last.idx !== idx && last.w && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        motion = p.animate([
+          { transform: transform({ x: last.x, y: box.y }), width: last.w + 'px' },
+          { transform: transform(box), width: box.w + 'px' }
+        ], { duration: 220, easing: 'cubic-bezier(.2,.7,.2,1)' });
+      }
       PILL.set(key, Object.assign({ idx }, box)); el.classList.add('pill-on'); return true;
     };
     let tries = 0; const go = () => { if (!place(true) && ++tries < 6) requestAnimationFrame(go); };
     requestAnimationFrame(go);
-    if (window.ResizeObserver) new ResizeObserver(() => { if (el.classList.contains('pill-on')) place(false); }).observe(el);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => {
+        if (!el.isConnected) { ro.disconnect(); return; }
+        if (el.classList.contains('pill-on')) place(false);
+      });
+      ro.observe(el);
+    }
     return el;
   };
 
