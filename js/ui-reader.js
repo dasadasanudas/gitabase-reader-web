@@ -40,7 +40,8 @@
     setInterval(() => { if (cur && !el.hidden && document.visibilityState === 'visible' && (GB.isWide() || document.body.classList.contains('reading'))) GB.reading.addTime(cur.B, 15000); }, 15000);
     window.addEventListener('resize', GB.debounce(() => { if (cur && !contOn()) { center(); if (hz) hzLayout(); } }, 120));
     // keep the current verse in place while the sidebar animates open or closed
-    if (window.ResizeObserver) new ResizeObserver(() => { if (cur && !contOn() && !busy) center(); }).observe(pager);
+    const widths = () => { const w = (contOn() ? contEl : pager).clientWidth || el.clientWidth; el.classList.toggle('rd-w520', w >= 520); el.classList.toggle('rd-w640', w >= 640); el.classList.toggle('rd-w860', w >= 860); };
+    if (window.ResizeObserver) new ResizeObserver(() => { widths(); if (cur && !contOn() && !busy) center(); }).observe(el);
     icons();
   };
   function icons() {
@@ -277,9 +278,9 @@
     head.innerHTML = ''; const { B } = cur;
     head.append(h('button.hdr-logo', { title: 'Contents', onclick: openDrawer }, img('headermenuicon.png')),
       h('div.t2.rd-titles', { title: 'Show/Hide Sanskrit', onclick: () => { GB.parts.toggleSanskrit(); R.rerender(); } },
-        h('div.t2a', null, h('span.tri', { text: '▾' }), GB.ut(B.title)), h('div.t2b', { text: GB.ut(Number(cur.ch.ch) === 0 ? refText() : (cur.ch.title || refText())) })));
+        h('div.t2a', null, h('span.tri', { text: '▾' }), GB.ut(B.title)), h('div.t2b', { text: GB.ut(GB.numbered(B) ? refText() : (cur.ch.title || refText())) })));
     if (GB.desk) head.prepend(GB.desk.toggleBtn());
-    crumbEl.replaceChildren(GB.crumbs(B, cur.ch, cur.row, 'verse'));
+
     const right = h('div.hdr-right');
     if (!GB.isWide()) right.append(GB.hbtn('back', 'Back', () => GB.back(), 'rd-back'));
     if (GB.canGoto(B)) right.append(GB.hbtn('goto', 'Go to verse', () => GB.gotoVerse(cur), 'rd-goto'));

@@ -12,6 +12,26 @@
   const ico = (name, cls) => h('span.ico' + (cls ? '.' + cls : ''), { html: GB.icons.svg(name) });
   GB.ico = ico;
 
+  // ---------- switchers (Books/Reading, segmented controls): one highlight that slides to the chosen option ----------
+  // Controls are rebuilt on every change, so the last position is kept per control and the highlight glides from there.
+  const PILL = new Map();
+  GB.pill = function (el, key) {
+    el.classList.add('has-pill'); const p = document.createElement('i'); p.className = 'pill'; el.prepend(p);
+    const place = anim => {
+      const on = el.querySelector(':scope > .on'); if (!on || !el.isConnected) return false;
+      const box = { x: on.offsetLeft, w: on.offsetWidth, y: on.offsetTop, hgt: on.offsetHeight }; if (!box.w) return false;
+      const last = PILL.get(key);
+      const set = b => { p.style.width = b.w + 'px'; p.style.height = b.hgt + 'px'; p.style.transform = 'translate(' + b.x + 'px,' + b.y + 'px)'; };
+      if (anim && last && (last.x !== box.x || last.w !== box.w)) { p.style.transition = 'none'; set(last); p.getBoundingClientRect(); p.style.transition = ''; requestAnimationFrame(() => set(box)); }
+      else set(box);
+      PILL.set(key, box); el.classList.add('pill-on'); return true;
+    };
+    let tries = 0; const go = () => { if (!place(true) && ++tries < 6) requestAnimationFrame(go); };
+    requestAnimationFrame(go);
+    if (window.ResizeObserver) new ResizeObserver(() => place(false)).observe(el);
+    return el;
+  };
+
   // ---------- what to call a book's top level: Canto (SB), līlā (CC), year (Letters, Conversations), topic ----------
   const isSBlike = B => B.abbr === 'SB' || /bh[aā]gavat/i.test(B.title || '') || /भागवत/.test(B.title || '');
   GB.songInfo = function (B, key) {
@@ -26,7 +46,7 @@
     const short = sb && B.lang === 'eng' ? 'Canto ' + n : (title.length <= 16 ? title : (sb ? word + ' ' + n : title.slice(0, 15) + '…'));
     const unit = /letter/i.test(B.title || '') ? 'letters' : /conversation/i.test(B.title || '') ? 'talks' : '';
     const all = sb ? (B.lang === 'hin' ? 'सभी स्कन्ध' : 'All cantos') : /l[iī]l[aā]/i.test(name) ? 'All līlās' : /^\d{4}$/.test(title) ? 'All years' : /topic/i.test(B.title || '') ? 'All topics' : 'All parts';
-    return { sub, title, short, all, count: count && unit ? count + ' ' + unit : count };
+    return { sub, title, short, all, count: count && unit ? count + ' ' + (count === '1' ? unit.replace(/s$/, '') : unit) : count };
   };
   // numbered books (verse references make sense); Letters, Conversations, KRISHNA Book etc. use titles instead
   GB.numbered = B => !!(B && (GB.canGoto ? GB.canGoto(B) : ['BG', 'SB', 'CC'].includes(B.abbr)) || (B && B.hasSanskrit));
@@ -187,8 +207,9 @@
   }
   function renderL(body) {
     const subs = [['books', 'Books'], ['reading', 'Reading']].concat(lib.hosted ? [] : [['mine', 'My books']]);
+    // the switcher stays put at the top; the continue card sits under it
+    body.append(GB.pill(h('div.subtabs', null, subs.map(([k, t]) => h('button.st' + (HOME.sub === k ? '.on' : ''), { onclick: () => { if (HOME.sub === k) return; HOME.sub = k; HOME.render(); } }, h('span', { text: t })))), 'subtabs'));
     if (HOME.sub === 'books') { const cc = continueCard(); if (cc) body.append(cc); }
-    body.append(h('div.subtabs', null, subs.map(([k, t]) => h('button.st' + (HOME.sub === k ? '.on' : ''), { onclick: () => { HOME.sub = k; HOME.render(); } }, h('span', { text: t })))));
     const list = h('div.stbody'); body.append(list);
     if (HOME.sub === 'books') { const lc = langChips(); if (lc) list.append(lc); }
     if (HOME.sub === 'reading') renderReading(list); else if (HOME.sub === 'mine' && !lib.hosted) renderMine(list); else renderBooks(list);

@@ -143,8 +143,11 @@
     if (ws) parts.push(String(song));
     if (ws || B.levels > 2 || B.chapters.length > 1) parts.push(ch);
     parts.push(no);
-    return (B.abbr ? B.abbr + ' ' : '') + parts.join('.');
+    return (B.abbr ? lib.shortAbbr(B) + ' ' : '') + parts.join('.');
   };
+  // editions keep their own code (BG72 = Bhagavad-gītā As It Is, 1972 edition) but read as the work: BG 4.2
+  lib.shortAbbr = B => String(B.abbr || '').replace(/^(BG|SB|CC)\d{2,4}$/, '$1');
+  lib.edition = B => { const m = String(B.abbr || '').match(/^(?:BG|SB|CC)(\d{2,4})$/); return m ? (m[1].length === 2 ? '19' + m[1] : m[1]) : ''; };
   lib.chapterLabel = (B, ch) => (songOn(B, ch.song) ? ch.song + '.' : '') + ch.ch;
   lib.findChapter = (B, song, chNo) => B.chapters.find(c => String(c.song) === String(song) && String(c.ch) === String(chNo)) || null;
   lib.findTextIndex = (rows, no) => { const n = String(no); let i = rows.findIndex(r => r.no === n); if (i < 0) i = rows.findIndex(r => r.no.split('-').map(Number).some((x, j, arr) => arr.length === 2 ? Number(n) >= arr[0] && Number(n) <= arr[1] : x === Number(n))); return i; };
