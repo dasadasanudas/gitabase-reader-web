@@ -231,3 +231,11 @@ body.night .bk, body.night .canto {
     linear-gradient(115deg, color-mix(in oklab, var(--chip-b) 17%, #1d2022), color-mix(in oklab, var(--chip-b) 12%, #181b1d) 55%, color-mix(in oklab, var(--chip-b) 8%, #141719));
   color: var(--book-title); }
 body.night .canto-mark, body.night .vol-title { color: var(--book-title); }
+/* covers: flat, clean, no sheen or grain (all themes) */
+.bk, .canto { background: color-mix(in oklab, var(--chip-b) 9%, var(--card)); border: 1px solid color-mix(in oklab, var(--chip-b) 16%, transparent); box-shadow: none; }
+.bk { border-left: 1px solid color-mix(in oklab, var(--chip-b) 16%, transparent); }
+.bk::after { display: none; }
+.bk:hover, .canto:hover { border-color: color-mix(in oklab, var(--chip-b) 45%, transparent); filter: none; }
+body.night .bk, body.night .canto { background: color-mix(in oklab, var(--chip-b) 8%, var(--card)); border-color: color-mix(in oklab, var(--chip-b) 14%, transparent); box-shadow: none; }
+.vol { background: transparent; padding-left: 0; padding-right: 0; }
+.canto-sub { color: var(--t2); opacity: 1; }
