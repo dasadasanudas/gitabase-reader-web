@@ -64,11 +64,11 @@ body.night .sw2 { background: #3a4744; }
 .verse .verseSanskrit, .verse .verseTranslit { margin-bottom: 14px; }
 
 /* second language: no tags, set apart by a softer ink; side by side on wide reading areas, stacked otherwise */
-.rd-scroll, .rd-cont, .vo-prev { container-type: inline-size; }
+.vo-prev { container-type: inline-size; }
 .pair.stack > .alt { margin-top: 12px; }
 .pair.side { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
 .pair.side > * { margin-bottom: 0; }
-@container (max-width: 640px) { .pair.side { display: block; } .pair.side > .alt { margin-top: 12px; } }
+.rd:not(.rd-w640) .pair.side, .vo-prev .pair.side { display: block; } .rd:not(.rd-w640) .pair.side > .alt { margin-top: 12px; }
 .verse:has(.pair.side) { max-width: 1120px; }
 .alt { opacity: .86; }
 .verseTransl2.alt { border-left-style: dashed !important; font-weight: 600; }
@@ -336,54 +336,28 @@ html.desk.side-off .rail-side { background: rgba(255,255,255,.12); color: #fff; 
 @keyframes gb-step-r { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
 @keyframes gb-step-l { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
 
-/* ================= reading layouts (Aa > Layout) ================= */
-.rl-pick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
-.rl-b { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 2px 7px; border-radius: 12px; background: var(--wash); color: var(--t2); font: 500 12px/1 var(--ui); box-shadow: inset 0 0 0 1px transparent; }
-.rl-b.on { background: color-mix(in oklab, var(--accent) 12%, var(--sheet-bg, #fff)); color: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); font-weight: 650; }
-.rl-ic svg { width: 40px; height: 30px; display: block; }
-.rl-ic .k { fill: currentColor; opacity: .85; } .rl-ic .m { fill: currentColor; opacity: .32; } .rl-ic .b { fill: currentColor; opacity: .7; } .rl-ic .r { fill: currentColor; opacity: .3; } .rl-ic .c { fill: currentColor; opacity: .12; }
-
-/* study: verse left (stays put while the purport scrolls), meaning right; one column on narrow panes */
-.verse.rl-study { max-width: 1240px; }
-.rl-study .st-grid { display: block; }
-@container rdpane (min-width: 860px) {
-  .rl-study .st-grid { display: grid; grid-template-columns: minmax(0, .92fr) minmax(0, 1.08fr); gap: 0 44px; align-items: start; }
-  .rl-study .st-l { position: sticky; top: 8px; max-height: calc(100vh - 140px); overflow-y: auto; scrollbar-width: none; padding-right: 4px; }
-  .rl-study .st-l .verseSanskrit, .rl-study .st-l .verseTranslit { text-align: left !important; }
-  .rl-study .st-l .verseSanskrit.dev { text-align: left !important; }
-  .rl-study .st-r { border-left: 1px solid var(--line); padding-left: 32px; }
-  .rl-study .st-r .pp-rule { margin-top: 18px; }
-}
-.rd-scroll, .rd-cont { container-type: inline-size; container-name: rdpane; }
-
-/* words: every word with its meaning under it */
-.ilw { display: flex; flex-wrap: wrap; gap: 10px 8px; justify-content: center; margin: 4px 0 20px; }
-.ilw-t { display: inline-flex; flex-direction: column; align-items: center; max-width: 13em; padding: 6px 10px 7px; border-radius: 10px; background: color-mix(in oklab, var(--translit, #8a5a1c) 7%, transparent); text-align: center; }
-.ilw-w { font-family: Diakritics_i, Diakritics, var(--verse); color: var(--translit); font-size: 1.04em; line-height: 1.25; }
-.ilw-w.skt { font-family: 'Tiro Devanagari Sanskrit', 'Noto Serif Devanagari', serif; font-style: normal; }
-.ilw-w a { color: inherit !important; border: 0 !important; }
-.ilw-m { font: .8em/1.3 var(--ui); color: var(--t2); margin-top: 3px; }
-.ilw-m .dev, .ilw-m:lang(hi) { font-family: 'Tiro Devanagari Hindi', 'Noto Serif Devanagari', serif; }
-.ilw-hide { display: none; }
-
-/* meaning: the translation leads, the verse sits in a card under it */
-.rl-meaning > .verseTransl2, .rl-meaning > .pair .verseTransl2 { font-size: 1.14em; line-height: 1.45; border-left: 0; padding-left: 0; font-weight: 600; margin: 4px 0 16px; }
-.rl-meaning > .verseTransl2.dev { line-height: 1.7; }
-.mf-card { margin: 4px 0 18px; padding: 14px 16px 6px; border-radius: 14px; background: color-mix(in oklab, var(--accent) 6%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 14%, transparent); font-size: .9em; }
-.mf-card .verseSanskrit, .mf-card .verseTranslit { margin-bottom: 8px; }
-
-/* lines: Devanagari line, its transliteration under it */
-.rc { margin: 6px 0 18px; display: flex; flex-direction: column; gap: 14px; text-align: center; }
-.rc-d { font: 1.16em/1.55 'Tiro Devanagari Sanskrit', 'Noto Serif Devanagari', serif; color: var(--skt); }
-body:not(.night) .rc-d { color: #303a49; }
-.rc-t { font-family: Diakritics_i, Diakritics, var(--verse); color: var(--translit); font-size: 1.02em; line-height: 1.4; margin-top: 2px; }
-.rc-only { gap: 2px; display: flex; flex-direction: column; }
-.rc-src { display: none !important; }
-.rc-nw { white-space: nowrap; }
-@container rdpane (max-width: 520px) { .rc-d { font-size: 1.06em; } .rc { gap: 12px; } }
 /* no scrollbars on the breadcrumb or the verse pager */
 html .crumbs, html.desk .crumbs, html .rd-pager, html.desk .rd-pager { scrollbar-width: none; }
 .rd-pager::-webkit-scrollbar { display: none; }
 .vtools { justify-content: flex-end; }
 @media (prefers-reduced-motion: no-preference) { .vt.t-in { animation: gb-pop .22s cubic-bezier(.2,.8,.2,1); } }
 .canto-n { margin-top: 4px; }
+/* the path row lives on the chapter list only, never in the reader */
+.rd-crumbs { display: none !important; }
+
+/* ================= sliding switcher highlight ================= */
+.has-pill { position: relative; isolation: isolate; }
+.has-pill > .pill { position: absolute; left: 0; top: 0; z-index: -1; pointer-events: none; opacity: 0; border-radius: 9px; background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+.has-pill.pill-on > .pill { opacity: 1; }
+.has-pill.pill-on > .on { background: transparent !important; box-shadow: none !important; }
+.seg.has-pill > .pill { border-radius: 9px; }
+/* phone Books/Reading: an underline that slides */
+.subtabs.has-pill.pill-on > .st.on { border-bottom-color: transparent; }
+.subtabs.has-pill > .pill { border-radius: 0; background: transparent; box-shadow: inset 0 -3px 0 var(--gold, var(--accent)); }
+html.desk .subtabs.has-pill > .pill { border-radius: 7px; background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.06); }
+html.desk body.night .subtabs.has-pill > .pill { background: color-mix(in oklab, var(--t1) 14%, transparent); }
+.subtabs .st { position: relative; z-index: 1; transition: color .2s, opacity .2s; }
+@media (prefers-reduced-motion: no-preference) {
+  .has-pill > .pill { transition: transform .32s cubic-bezier(.3,.8,.25,1.08), width .32s cubic-bezier(.3,.8,.25,1), opacity .15s; }
+}
+.gv-books { display: flex; flex-direction: column; gap: 8px; }
