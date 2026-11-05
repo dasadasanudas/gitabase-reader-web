@@ -82,6 +82,12 @@
   }
   function syncModal() { const m = $('#deskModal'); if (m) m.classList.toggle('on', L.stack.some(L.isModal)); }
   L.push = page => {
+    // On phones the reader is a full-screen layer above #left. Utility pages must
+    // suspend that layer, then return to the unchanged verse when Back is pressed.
+    if (!GB.isWide() && document.body.classList.contains('reading')) {
+      page.returnToReader = true;
+      GB.reader.close();
+    }
     const t = L.top(); if (t && !L.isModal(page)) t.el.classList.add('under');
     if (L.isModal(page)) { const w = modalHost().firstChild; w.querySelectorAll('.page').forEach(x => x.classList.add('under')); w.append(page.el); page.el.classList.add('dm-page');
       const right = page.hdr && page.hdr.querySelector('.hdr-right'); if (right && !right.querySelector('.dm-x')) right.append(h('button.hdr-btn.dm-x', { title: 'Close (Esc)', onclick: () => { while (L.isModal(L.top())) L.pop(); }, html: GB.icons.svg('close') })); }
@@ -94,7 +100,12 @@
   L.pop = () => {
     if (L.stack.length <= 1) return false;
     const p = L.stack.pop(); if (p.onClose) p.onClose(); leave(p.el);
-    const t = L.top(); t.el.classList.remove('under'); if (t.refresh) t.refresh(); chrome(); syncModal(); return true;
+    const t = L.top(); t.el.classList.remove('under'); if (t.refresh) t.refresh();
+    if (p.returnToReader && GB.reader.current()) {
+      document.body.classList.add('reading');
+      GB.screen.enter();
+    }
+    chrome(); syncModal(); return true;
   };
   // a popped page slides out before it is removed (no delay when motion is reduced)
   const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
