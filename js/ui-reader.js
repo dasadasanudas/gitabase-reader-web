@@ -56,7 +56,7 @@
   R.open = async function (B, ch, i, opts) {
     opts = opts || {}; if (!B || !ch) return;
     needles = opts.needles || null; sIdx = 0; if (!needles) sbar.hidden = true;
-    show(); loading(true); closeDrawer(); hideSelbar();
+    if (!opts.background) show(); loading(true); closeDrawer(); hideSelbar();
     try {
       const rows = await lib.chapterTexts(B, ch);
       if (!rows.length) { loading(false); GB.ui.toast('This chapter has no texts'); return; }
@@ -270,7 +270,7 @@
   }
   R.setMode = async function (m) {
     GB.setPref('readMode', m === 'cont' ? 'cont' : 'verse');
-    if (cur) { const { B, ch, i } = cur; await R.open(B, ch, i, { noAsk: true }); }
+    if (cur) { const { B, ch, i } = cur; const background = !GB.isWide() && !document.body.classList.contains('reading'); await R.open(B, ch, i, { noAsk: true, background }); }
   };
   // ---------- title bar, progress ----------
   function refText() { const { B, ch, row } = cur; if (Number(ch.ch) === 0) { const pv = GB.ut(row.preview || '').slice(0, 60); return pv && pv !== ch.title ? (ch.title || '') + ' · ' + pv : (ch.title || pv); } return lib.label(B, ch.song, ch.ch, row.no).split(' ').pop() + ' ' + (ch.title || ''); }
