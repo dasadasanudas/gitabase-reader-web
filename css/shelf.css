@@ -1,4 +1,4 @@
-/* Gitabase Reader web: shelf additions (preview). Works with the old look and the Pentabase look. */
+/* Gitabase Reader web: shelf additions. Works with the old look and the Modern theme. */
 
 /* works in several parts or volumes (Srimad-Bhagavatam, Caitanya-caritamrita, Prabhupada-lilamrita ...): one bordered group */
 body .vol {
@@ -9,8 +9,10 @@ body .vol {
   background: color-mix(in oklab, currentColor 3%, transparent);
 }
 body .vol .vol-author { padding-top: 0; }
+/* every second group gets a soft tint of the accent, like the alternate rows of a table (set by js/ui-look.js) */
+html body .vol.alt { background: color-mix(in oklab, var(--accent, currentColor) 8%, transparent); border-color: color-mix(in oklab, var(--accent, currentColor) 28%, transparent); }
 
-/* the New look switch row in Settings and in the Aa panel */
+/* the Modern theme switch row in Settings and in the Aa panel */
 .pref.look .pref-t { font-weight: 600; }
 .rp-look { padding-bottom: 6px; }
 .rp-look .rp-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

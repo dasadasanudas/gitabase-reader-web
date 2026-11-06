@@ -1,9 +1,13 @@
-/* Gitabase Reader web: shelf and look additions.
+/* Gitabase Reader web: shelf, look and lookup additions.
    1. Books that carry no chapters rows (Teachings of Lord Caitanya, Nectar of Devotion, Teachings of Queen Kunti ...: ebooks whose
       texts are chapters) get one chapter built from their text rows, so they open and read as paged ebooks.
    2. Shelf order: Bhagavad-gita, Srimad-Bhagavatam, Caitanya-caritamrita always first, in that order, in every language.
+      Volume groups get alternate tints.
    3. A visible switch for the Modern theme (beta) in Settings and in the Aa panel; off = the old look.
-   4. The Modern accent itself (key 'penta', colours come from css/penta.css, not from inline styles). Safe to load where it already exists. */
+   4. The Modern accent itself (key 'penta', colours come from css/penta.css, not from inline styles). Safe to load where it already exists.
+   5. Word lookup: the gitabase texts write the anusvara as m + acute and the guttural nasal as n-acute, the reader draws them as the dotted letters;
+      the lookup key now uses the books' own spelling first (words with m-dot and n-dot were reported as 'not in the dictionary').
+   6. Search: the status line names the file being read. */
 'use strict';
 (function (GB) {
   const { h } = GB;
@@ -27,6 +31,10 @@
     lib.books.sort((a, b) => (a.lang < b.lang ? -1 : a.lang > b.lang ? 1 : 0) || (RANK(a) - RANK(b)) || (pos.get(a) - pos.get(b)));
   }
   document.addEventListener('gb:library', pin, true);
+  // alternate tint on the volume groups, like the rows of a table
+  function zebra() { let i = 0; document.querySelectorAll('.home-body .stbody > .vol').forEach(v => v.classList.toggle('alt', i++ % 2 === 1)); }
+  { const hr = GB.home.render;
+    GB.home.render = function () { const r = hr.apply(this, arguments); try { zebra(); } catch (e) {} return r; }; }
 
   // ---------- 1. ebooks without chapter rows ----------
   async function synth(B) {
@@ -51,6 +59,22 @@
     const go = () => (B.chapters.length === 1 && B.chapters[0].synth && !B.hasSongs ? GB.chapter.open(B, B.chapters[0], null, true) : bo.call(GB.book, B, song));
     return B._synthP ? B._synthP.then(go) : go();
   };
+
+  // ---------- 5. word lookup spelling ----------
+  const gbKey = w => String(w == null ? '' : w).normalize('NFC').replace(/[\u1E41\u1E43]/g, 'm\u0301').replace(/[\u1E40\u1E42]/g, 'M\u0301').replace(/\u1E45/g, '\u0144').replace(/\u1E44/g, '\u0143');
+  { const wl = GBDB.wbwLookup;
+    GBDB.wbwLookup = async function (id, word) {
+      const a = gbKey(word); let r = await wl.call(GBDB, id, a);
+      if ((!r || !r.length) && a !== word) r = await wl.call(GBDB, id, word);
+      return r;
+    }; }
+
+  // ---------- 6. search: say which file is being read ----------
+  { const ft = GBDB.fts;
+    GBDB.fts = function (dbId) {
+      try { const st = document.querySelector('.searchpage .loading-row'); if (st) { const D = Array.from(lib.dbs.values()).find(x => x.num === dbId); st.textContent = 'Searching ' + (D ? D.name : 'the library') + '…'; } } catch (e) {}
+      return ft.apply(GBDB, arguments);
+    }; }
 
   // ---------- 3. Modern theme (beta) switch ----------
   const isNew = () => GB.prefs.accent === 'penta';
