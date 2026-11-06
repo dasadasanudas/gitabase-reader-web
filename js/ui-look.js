@@ -1,12 +1,23 @@
-/* Gitabase Reader web: shelf and look additions (preview).
+/* Gitabase Reader web: shelf and look additions.
    1. Books that carry no chapters rows (Teachings of Lord Caitanya, Nectar of Devotion, Teachings of Queen Kunti ...: ebooks whose
       texts are chapters) get one chapter built from their text rows, so they open and read as paged ebooks.
    2. Shelf order: Bhagavad-gita, Srimad-Bhagavatam, Caitanya-caritamrita always first, in that order, in every language.
-   3. A visible switch for the new Pentabase look (beta) in Settings and in the Aa panel; off = the old look. */
+   3. A visible switch for the Pentabase look (beta) in Settings and in the Aa panel; off = the old look.
+   4. The Pentabase accent itself (colours come from css/penta.css, not from inline styles). Safe to load where it already exists. */
 'use strict';
 (function (GB) {
   const { h } = GB;
   const lib = GB.lib, L = GB.left;
+
+  // ---------- 4. the Pentabase accent ----------
+  if (!GB.ACCENTS.penta) GB.ACCENTS.penta = { name: 'Pentabase', day: '#207dff', night: '#61c6fa', hdr: '#f7f7f7', hdrN: '#212121', ink: '#5a5a5d', inkN: '#a9aaab', key: 'penta' };
+  { const ai = GB.accentInk;
+    GB.accentInk = nightInk => { const a = GB.ACCENTS[(GB.prefs && GB.prefs.accent) || 'tulasi'] || GB.ACCENTS.tulasi; return a.ink ? (nightInk ? a.inkN : a.ink) : ai(nightInk); }; }
+  { const aa = GB.applyAccent;
+    GB.applyAccent = function () {
+      aa.apply(this, arguments);
+      if (GB.prefs.accent === 'penta') for (const k of ['--accent', '--link', '--chip-b', '--tab-on', '--hdr', '--tab-bar', '--cmp-bar', '--transl', '--hdr-grad', '--wash', '--hover', '--sel']) document.body.style.removeProperty(k);
+    }; }
 
   // ---------- 2. pinned order (runs first, so every screen that renders the shelf sees it) ----------
   const RANK = B => { const a = lib.shortAbbr(B); if (a === 'BG') return lib.edition(B) ? 1 : 0; if (a === 'SB') return 2; if (a === 'CC') return 3; return 9; };
