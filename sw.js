@@ -7,7 +7,7 @@ const BUILD = '__BUILD__';                 // stamped by tools/build_site.py
 const ASSETS = [/*__ASSETS__*/];          // fonts and toolbar images, stamped by tools/build_site.py
 const SHELL = 'gb-shell-' + BUILD, STATIC = 'gb-static-v3', CHUNKS = 'gb-chunks-v1';
 const CORE = ['./', 'index.html', 'css/app.css', 'css/own-art.css', 'css/theme.css', 'manifest.webmanifest', 'js/sqlite-src.js', 'js/db.js', 'js/util.js', 'js/assets.js', 'js/icons.js',
-  'js/store.js', 'js/library.js', 'js/render.js', 'js/notes.js', 'js/ui-home.js', 'js/ui-book.js', 'js/ui-reader.js', 'js/ui-extra.js', 'js/ui-v2.js', 'js/ui-desk.js', 'css/v2.css', 'css/desk.css', 'js/app.js'];
+  'js/store.js', 'js/library.js', 'js/render.js', 'js/notes.js', 'js/ui-home.js', 'js/ui-book.js', 'js/ui-reader.js', 'js/ui-extra.js', 'js/ui-v2.js', 'js/ui-desk.js', 'js/ui-look.js', 'css/v2.css', 'css/desk.css', 'css/penta.css', 'css/penta-size.css', 'css/shelf.css', 'js/app.js'];
 
 self.addEventListener('install', e => e.waitUntil((async () => {
   const c = await caches.open(SHELL); await c.addAll(CORE);
