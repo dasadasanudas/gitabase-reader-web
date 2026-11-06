@@ -8,9 +8,9 @@
    3. A visible switch for the Modern theme (beta) in Settings and in the Aa panel; off = the old look.
    4. The Modern accent itself (key 'penta', colours come from css/penta.css, not from inline styles). Safe to load where it already exists.
    5. Word lookup: the gitabase texts write the anusvara as m + acute and the guttural nasal as n-acute, the reader draws them as the dotted letters;
-      the lookup key now uses the books' own spelling first (words with m-dot and n-dot were reported as 'not in the dictionary').
+      the lookup key now uses the books' own spelling first; then the plain spelling (jnana matches jñāna).
    6. Search: the status line names the file being read.
-   7. A thin bar along the bottom of the reader shows how much of the current verse has been read (scrolled into view). */
+   7. A bar along the bottom of the reader shows how much of the current verse has been read (scrolled into view). */
 'use strict';
 (function (GB) {
   const { h } = GB;
@@ -146,10 +146,19 @@
 
   // ---------- 5. word lookup spelling ----------
   const gbKey = w => String(w == null ? '' : w).normalize('NFC').replace(/[\u1E41\u1E43]/g, 'm\u0301').replace(/[\u1E40\u1E42]/g, 'M\u0301').replace(/\u1E45/g, '\u0144').replace(/\u1E44/g, '\u0143');
+  const plainKey = w => String(w == null ? '' : w).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   { const wl = GBDB.wbwLookup;
     GBDB.wbwLookup = async function (id, word) {
       const a = gbKey(word); let r = await wl.call(GBDB, id, a);
       if ((!r || !r.length) && a !== word) r = await wl.call(GBDB, id, word);
+      if (!r || !r.length) {   // the text links a plain spelling (jnana), the book's word-for-word has the accented one (jñāna): match on plain letters
+        const f = plainKey(word); r = [];
+        if (f) {
+          let sug = []; try { sug = await GBDB.wbwSuggest(id, f, 80); } catch (e) {}
+          const keys = (sug || []).map(x => x[0]).filter(k => plainKey(k) === f).slice(0, 8), seen = new Set();
+          for (const k of keys) for (const x of (await wl.call(GBDB, id, k)) || []) if (!seen.has(x[0])) { seen.add(x[0]); r.push(x); }
+        }
+      }
       return r;
     }; }
 
