@@ -1,15 +1,23 @@
 /* Gitabase Reader web: shelf additions. Works with the old look and the Modern theme. */
 
 /* works in several parts or volumes (Srimad-Bhagavatam, Caitanya-caritamrita, Prabhupada-lilamrita ...): one bordered group.
-   The inside is a little darker than the page so you can see where one book starts and stops, even though the border is thin. */
+   Inside the border a super light cross-hatch (diagonals one way, then the other, very close together) shows where one book starts and stops,
+   even though the border is thin. */
 html body .vol, html[data-accent=penta] body .vol {
   border: 1.5px solid color-mix(in oklab, currentColor 30%, transparent);
   border-radius: 16px;
   padding: 12px 12px 14px;
   margin: 14px 0;
-  background: rgba(0, 0, 0, .05);
+  background-color: transparent;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(0, 0, 0, .035) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, .035) 0 1px, transparent 1px 5px);
 }
-html body.night .vol, html[data-accent=penta] body.night .vol { background: rgba(0, 0, 0, .16); }
+html body.night .vol, html[data-accent=penta] body.night .vol {
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, .05) 0 1px, transparent 1px 5px);
+}
 body .vol .vol-author { padding-top: 0; }
 
 /* the Modern theme switch row in Settings and in the Aa panel */
