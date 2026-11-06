@@ -4,10 +4,19 @@
 For every .db / .gitabase in the input folder: copy it, add the indexes the reader uses (the Android app adds
 the same ones on first open), VACUUM, then split the file into fixed-size chunks so the browser downloads only
 the pages it reads. Writes <out>/catalog.json, which the app loads automatically when served over http(s).
+Each catalog entry also carries "meta" (tables, books, songs, chapters ... see gb_meta.py), so the reader can
+list the whole library without opening any database.
 
 usage: python tools/prepare_library.py databases site/library [--chunk 262144]
 """
 import json, os, re, shutil, sqlite3, sys, tempfile, hashlib, argparse, unicodedata
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from gb_meta import build_meta
+except Exception as _e:   # the catalogue metadata is an extra: without it the reader opens each file itself
+    print('gb_meta unavailable:', _e)
+    build_meta = lambda con: None
 
 INDEXES = [
     ('textnums', ['book_id', 'song', 'ch_no', 'text_seq_no']),
@@ -76,8 +85,10 @@ def prepare(src, tmp):
     con.execute('PRAGMA journal_mode=DELETE')
     con.execute('VACUUM')
     books = [r[0] for r in con.execute('SELECT title FROM books ORDER BY sort, _id')] if cols(con, 'books') else []
+    try: meta = build_meta(con)
+    except Exception as e: print('meta skipped:', e); meta = None
     con.close()
-    return made, books
+    return made, books, meta
 
 def main():
     ap = argparse.ArgumentParser()
@@ -92,7 +103,7 @@ def main():
             if f.read(15) != b'SQLite format 3': print('skip (not SQLite):', name); continue
         fid = hashlib.sha1(name.encode()).hexdigest()[:10]
         tmp = os.path.join(tempfile.gettempdir(), 'gbweb_' + fid + '.db')
-        made, books = prepare(path, tmp)
+        made, books, meta = prepare(path, tmp)
         # chunk folders carry a content hash, so a changed file gets new URLs (no stale browser or offline cache)
         h = hashlib.sha256()
         with open(tmp, 'rb') as f:
@@ -110,8 +121,10 @@ def main():
                 n += 1
         os.remove(tmp)
         rel = os.path.relpath(d, os.path.dirname(os.path.abspath(a.out))).replace(os.sep, '/')
-        files.append({'id': fid, 'name': name, 'size': size, 'chunkSize': a.chunk, 'chunks': n, 'base': rel + '/', 'sha256': digest, 'books': books})
-        print('%s: %d bytes, %d chunks, %d indexes, books: %s' % (name, size, n, len(made), ', '.join(books)))
+        entry = {'id': fid, 'name': name, 'size': size, 'chunkSize': a.chunk, 'chunks': n, 'base': rel + '/', 'sha256': digest, 'books': books}
+        if meta: entry['meta'] = meta
+        files.append(entry)
+        print('%s: %d bytes, %d chunks, %d indexes, meta %s, books: %s' % (name, size, n, len(made), 'yes' if meta else 'no', ', '.join(books)))
     with open(os.path.join(a.out, 'catalog.json'), 'w', encoding='utf-8') as f:
         json.dump({'version': 1, 'files': files}, f, ensure_ascii=False, indent=1)
     print('catalog:', len(files), 'file(s)')
