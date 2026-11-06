@@ -75,8 +75,11 @@
     const build = () => {
       nav.innerHTML = '';
       const cats = Array.from(pg.body.querySelectorAll('.pref-cat'));
+      // the section is looked up when the button is pressed: changing any setting redraws the whole list,
+      // and a reference kept from before would point at a removed element (the buttons then did nothing)
       cats.forEach((c, i) => nav.append(h('button.dm-nav-b' + (i === 0 ? '.on' : ''), { type: 'button', text: c.textContent, onclick: () => {
-        const top = c.offsetTop - pg.body.offsetTop - 4; pg.body.scrollTo({ top, behavior: 'smooth' }); } })));
+        const cur = pg.body.querySelectorAll('.pref-cat')[i]; if (!cur) return;
+        const top = cur.offsetTop - pg.body.offsetTop - 4; pg.body.scrollTo({ top, behavior: 'smooth' }); } })));
     };
     const spy = () => {
       const cats = Array.from(pg.body.querySelectorAll('.pref-cat')); let k = 0;

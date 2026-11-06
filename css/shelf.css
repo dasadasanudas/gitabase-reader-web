@@ -1,0 +1,16 @@
+/* Gitabase Reader web: shelf additions (preview). Works with the old look and the Pentabase look. */
+
+/* works in several parts or volumes (Srimad-Bhagavatam, Caitanya-caritamrita, Prabhupada-lilamrita ...): one bordered group */
+body .vol {
+  border: 1.5px solid color-mix(in oklab, currentColor 22%, transparent);
+  border-radius: 16px;
+  padding: 12px 12px 14px;
+  margin: 14px 0;
+  background: color-mix(in oklab, currentColor 3%, transparent);
+}
+body .vol .vol-author { padding-top: 0; }
+
+/* the New look switch row in Settings and in the Aa panel */
+.pref.look .pref-t { font-weight: 600; }
+.rp-look { padding-bottom: 6px; }
+.rp-look .rp-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
