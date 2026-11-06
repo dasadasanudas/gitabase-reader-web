@@ -1,17 +1,97 @@
 /* Gitabase Reader web: shelf, look and lookup additions.
+   0. Fast start: when library/catalog.json carries "meta" for every file (tools/prepare_library.py), the library is built from it and no
+      database is opened at start; a file opens (once, lazily) the first time something reads from it. Old catalogues boot the old way.
    1. Books that carry no chapters rows (Teachings of Lord Caitanya, Nectar of Devotion, Teachings of Queen Kunti ...: ebooks whose
       texts are chapters) get one chapter built from their text rows, so they open and read as paged ebooks.
    2. Shelf order: Bhagavad-gita, Srimad-Bhagavatam, Caitanya-caritamrita always first, in that order, in every language.
-      Volume groups get alternate tints.
+      Every second row of the shelf (books and volume groups) gets a soft grey tint.
    3. A visible switch for the Modern theme (beta) in Settings and in the Aa panel; off = the old look.
    4. The Modern accent itself (key 'penta', colours come from css/penta.css, not from inline styles). Safe to load where it already exists.
    5. Word lookup: the gitabase texts write the anusvara as m + acute and the guttural nasal as n-acute, the reader draws them as the dotted letters;
-      the lookup key now uses the books' own spelling first (words with m-dot and n-dot were reported as 'not in the dictionary').
-   6. Search: the status line names the file being read. */
+      the lookup key now uses the books' own spelling first; then the plain spelling (jnana matches jñāna).
+   6. Search: the status line names the file being read.
+   7. A bar along the bottom of the reader shows how much of the current verse has been read (scrolled into view).
+   8. Preview only: on phones the selection toolbar floats next to the selected text. */
 'use strict';
 (function (GB) {
   const { h } = GB;
   const lib = GB.lib, L = GB.left;
+
+  // ---------- 0. fast start from the catalogue ----------
+  // lazy databases: GBDB.lazy(id, source) registers a file; the first call that names it opens it, and everything waits for that
+  const lazy = new Map();
+  GBDB.lazy = (id, source) => { lazy.set(id, { source, p: null }); };
+  const wake = id => {
+    const l = lazy.get(id); if (!l) return null;
+    return l.p || (l.p = GBDB.open(id, l.source).then(() => { lazy.delete(id); }, e => { l.p = null; throw e; }));
+  };
+  for (const k of ['q', 'batch', 'wbwLookup', 'wbwSuggest', 'fts', 'hasFts', 'stats']) {
+    const f = GBDB[k];
+    GBDB[k] = function (id) { const w = wake(id); const a = arguments; return w ? w.then(() => f.apply(GBDB, a)) : f.apply(GBDB, a); };
+  }
+  { const f = GBDB.lookup;
+    GBDB.lookup = function (args) { const w = wake(args && args.dbId); return w ? w.then(() => f.call(GBDB, args)) : f.call(GBDB, args); }; }
+  { const f = GBDB.close;
+    GBDB.close = function (id) {
+      const l = lazy.get(id);
+      if (l && !l.p) { lazy.delete(id); return Promise.resolve(true); }
+      return l ? l.p.then(() => f.call(GBDB, id)) : f.call(GBDB, id);
+    }; }
+
+  const LANGS = { en: 'eng', hi: 'hin', ru: 'rus', bn: 'ben', uk: 'ukr', de: 'ger', fr: 'fre', es: 'spa', it: 'ita', pt: 'por', lv: 'lat', sa: 'san', gu: 'guj', ta: 'tam', te: 'tel', ml: 'mal', kn: 'kan', mr: 'mar', or: 'ori', zh: 'chi', ja: 'jpn', pl: 'pol', cs: 'cze', hu: 'hun', bg: 'bul', ka: 'geo', et: 'est', lt: 'lit', ne: 'nep' };
+  const NAME_LANG = { eng: 'eng', en: 'eng', rus: 'rus', ru: 'rus', hin: 'hin', hi: 'hin', ben: 'ben', bn: 'ben', ukr: 'ukr', ua: 'ukr', uk: 'ukr',
+    ger: 'ger', de: 'ger', fre: 'fre', fr: 'fre', spa: 'spa', es: 'spa', guj: 'guj', gu: 'guj', mar: 'mar', nep: 'nep', san: 'san' };
+  function nameLang(name) {
+    const parts = String(name || '').toLowerCase().replace(/\.[a-z0-9]+$/, '').split(/[^a-z]+/).filter(Boolean);
+    for (let i = parts.length - 1; i >= 0; i--) if (NAME_LANG[parts[i]]) return NAME_LANG[parts[i]];
+    return '';
+  }
+  // the same decision library.js makes when it opens a file (name first, then the script of the text, then the locale)
+  function detectLang(locale, sample, name) {
+    const n = nameLang(name); if (n) return n;
+    const t = String(sample || '').replace(/<[^>]+>/g, ' ').replace(/&#?\w+;/g, ' ');
+    const count = re => (t.match(re) || []).length;
+    const dev = count(/[\u0900-\u097F]/g), ben = count(/[\u0980-\u09FF]/g), cyr = count(/[\u0400-\u04FF]/g), lat = count(/[A-Za-z]/g);
+    const top = Math.max(dev, ben, cyr, lat);
+    if (top > 0 && top === dev) return 'hin';
+    if (top > 0 && top === ben) return 'ben';
+    if (top > 0 && top === cyr) return /[їєі]/i.test(t) ? 'ukr' : 'rus';
+    const l = String(locale || '').slice(0, 2).toLowerCase();
+    const Lg = LANGS[l] || l;
+    return top > 0 && top === lat && ['rus', 'ukr', 'hin', 'ben'].includes(Lg) ? 'eng' : (Lg || 'eng');
+  }
+  let fastSeq = 0;
+  function dbFromMeta(f) {
+    const m = f.meta, rec = { id: 'h:' + f.id, name: f.name, size: f.size, kind: 'hosted' };
+    const num = 100000 + (++fastSeq);
+    const D = { id: rec.id, num, name: rec.name, size: rec.size, kind: rec.kind, tables: m.tables, idx: m.tables.__idx || [], rec, meta: m };
+    D.modern = lib.has(D, 'textnums', 'text_id') || lib.has(D, 'image_nums', 'bid');
+    let sample = m.books.map(b => (b.title || '') + ' ' + (b.author || '')).join(' ');
+    for (const t of m.sample || []) sample += ' ' + t;
+    D.lang = detectLang(m.locale, sample, rec.name); D.locale = m.locale || '';
+    D.entityMode = !!m.entityMode; D.songs = m.songs || []; D.chapters = m.chapters || []; D.books = m.books; D.hasFts = !!m.hasFts;
+    D.imgKinds = {};
+    for (const r of m.imgRows || []) (D.imgKinds[r.b] = D.imgKinds[r.b] || {})[r.k || 1] = r.n;
+    GBDB.lazy(num, { base: new URL(f.base, document.baseURI).href, size: f.size, chunkSize: f.chunkSize });
+    return D;
+  }
+  const bootOld = lib.boot;
+  lib.boot = async function () {
+    if (/^https?:$/.test(location.protocol)) {
+      let cat = null;
+      try { const r = await fetch('library/catalog.json', { cache: 'no-cache' }); if (r.ok) cat = await r.json(); } catch (e) {}
+      if (cat && (cat.files || []).length && cat.files.every(f => f.meta && f.meta.tables && f.meta.books)) {
+        try {
+          await GBDB.init();
+          const made = cat.files.map(dbFromMeta);
+          lib.hosted = true; lib.catalog = cat;
+          for (const D of made) lib.dbs.set(D.id, D);
+          lib.rebuild(); lib.fast = true; return;
+        } catch (e) { console.warn('catalogue start failed, opening the files instead', e); lib.dbs.clear(); }
+      }
+    }
+    return bootOld.apply(this, arguments);
+  };
 
   // ---------- 4. the Modern accent ----------
   if (!GB.ACCENTS.penta) GB.ACCENTS.penta = { name: 'Modern', day: '#207dff', night: '#61c6fa', hdr: '#f7f7f7', hdrN: '#212121', ink: '#5a5a5d', inkN: '#a9aaab', key: 'penta' };
@@ -31,8 +111,8 @@
     lib.books.sort((a, b) => (a.lang < b.lang ? -1 : a.lang > b.lang ? 1 : 0) || (RANK(a) - RANK(b)) || (pos.get(a) - pos.get(b)));
   }
   document.addEventListener('gb:library', pin, true);
-  // alternate tint on the volume groups, like the rows of a table
-  function zebra() { let i = 0; document.querySelectorAll('.home-body .stbody > .vol').forEach(v => v.classList.toggle('alt', i++ % 2 === 1)); }
+  // every second row of the shelf (single books and volume groups alike), in a neutral grey
+  function zebra() { let i = 0; document.querySelectorAll('.home-body .stbody :is(.bk, .vol)').forEach(v => v.classList.toggle('alt', i++ % 2 === 1)); }
   { const hr = GB.home.render;
     GB.home.render = function () { const r = hr.apply(this, arguments); try { zebra(); } catch (e) {} return r; }; }
 
@@ -41,8 +121,13 @@
     for (const part of B.parts) {
       const D = part.D; if (!lib.has(D, 'textnums', 'book_id')) continue;
       const ids = [part.bookId, String(part.bookId)];
-      let rs = [];
-      try { rs = await lib.q(D, 'SELECT song, ch_no, count(*) AS n FROM textnums WHERE book_id IN (?, ?) GROUP BY song, ch_no ORDER BY song, ch_no', ids); } catch (e) { console.warn('ebook chapters', e); }
+      let rs = null;
+      const pre = D.meta && D.meta.noch && D.meta.noch[String(part.bookId)];   // from the catalogue: no database read needed
+      if (pre) rs = pre.map(r => ({ song: r[0], ch_no: r[1], n: r[2] }));
+      else {
+        rs = [];
+        try { rs = await lib.q(D, 'SELECT song, ch_no, count(*) AS n FROM textnums WHERE book_id IN (?, ?) GROUP BY song, ch_no ORDER BY song, ch_no', ids); } catch (e) { console.warn('ebook chapters', e); }
+      }
       for (const r of rs) B.chapters.push({ song: String(r.song), ch: r.ch_no, title: B.title, size: 0, part, prevSize: 0, synth: true });
     }
     B.chapters.forEach((c, i) => { c.idx = i; c.book = B; });
@@ -62,10 +147,19 @@
 
   // ---------- 5. word lookup spelling ----------
   const gbKey = w => String(w == null ? '' : w).normalize('NFC').replace(/[\u1E41\u1E43]/g, 'm\u0301').replace(/[\u1E40\u1E42]/g, 'M\u0301').replace(/\u1E45/g, '\u0144').replace(/\u1E44/g, '\u0143');
+  const plainKey = w => String(w == null ? '' : w).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   { const wl = GBDB.wbwLookup;
     GBDB.wbwLookup = async function (id, word) {
       const a = gbKey(word); let r = await wl.call(GBDB, id, a);
       if ((!r || !r.length) && a !== word) r = await wl.call(GBDB, id, word);
+      if (!r || !r.length) {   // the text links a plain spelling (jnana), the book's word-for-word has the accented one (jñāna): match on plain letters
+        const f = plainKey(word); r = [];
+        if (f) {
+          let sug = []; try { sug = await GBDB.wbwSuggest(id, f, 80); } catch (e) {}
+          const keys = (sug || []).map(x => x[0]).filter(k => plainKey(k) === f).slice(0, 8), seen = new Set();
+          for (const k of keys) for (const x of (await wl.call(GBDB, id, k)) || []) if (!seen.has(x[0])) { seen.add(x[0]); r.push(x); }
+        }
+      }
       return r;
     }; }
 
@@ -75,6 +169,69 @@
       try { const st = document.querySelector('.searchpage .loading-row'); if (st) { const D = Array.from(lib.dbs.values()).find(x => x.num === dbId); st.textContent = 'Searching ' + (D ? D.name : 'the library') + '…'; } } catch (e) {}
       return ft.apply(GBDB, arguments);
     }; }
+
+  // ---------- 7. bottom bar: how much of the current verse has been read ----------
+  // the share of the verse that has scrolled into view (the bottom edge of what is on screen), so a verse that fits the screen reads 100%
+  let vpBar = null, vpFill = null, vpLast = -1;
+  function vpRatio(rd) {
+    const clamp = x => Math.max(0, Math.min(1, x));
+    const cont = rd.querySelector('.rd-cont');
+    if (cont && !cont.hidden) {
+      const cr = cont.getBoundingClientRect(), line = cr.top + 56;
+      const it = Array.from(cont.querySelectorAll('.cv')).find(x => x.getBoundingClientRect().bottom > line);
+      if (!it) return 1;
+      const r = it.getBoundingClientRect(); return r.height > 0 ? clamp((cr.bottom - r.top) / r.height) : 1;
+    }
+    const pager = rd.querySelector('.rd-pager'); if (!pager) return 0;
+    const slot = pager.querySelectorAll(':scope > .rd-slot')[1], sc = slot && slot.firstElementChild; if (!sc) return 0;
+    if (pager.classList.contains('hz')) return sc.scrollWidth > 0 ? clamp((sc.scrollLeft + sc.clientWidth) / sc.scrollWidth) : 1;
+    return sc.scrollHeight > 0 ? clamp((sc.scrollTop + sc.clientHeight) / sc.scrollHeight) : 1;
+  }
+  function vpUpdate() {
+    const rd = vpBar && vpBar.closest('.rd'); if (!rd || rd.hidden) return;
+    const rc = rd.getBoundingClientRect();   // pinned to the very bottom of the screen, under the reader only (not the sidebar)
+    if (vpBar._l !== rc.left || vpBar._w !== rc.width) { vpBar._l = rc.left; vpBar._w = rc.width; vpBar.style.left = rc.left + 'px'; vpBar.style.width = rc.width + 'px'; }
+    const p = Math.round(vpRatio(rd) * 1000) / 10; if (p === vpLast) return; vpLast = p;
+    vpFill.style.width = p + '%'; vpBar.setAttribute('aria-valuenow', String(Math.round(p))); vpBar.title = Math.round(p) + '% of this verse read'; vpBar.classList.toggle('done', p >= 99.5);
+  }
+  { const rb = GB.reader.build;
+    GB.reader.build = function () {
+      const r = rb.apply(this, arguments);
+      try {
+        const stage = document.querySelector('#reader .rd-stage'); if (!stage) return r;
+        vpFill = h('i'); vpBar = h('div.vprog', { role: 'progressbar', 'aria-label': 'Part of this verse read', 'aria-valuemin': '0', 'aria-valuemax': '100' }, vpFill);
+        stage.append(vpBar);
+        const rd = stage.closest('.rd'); rd.addEventListener('scroll', vpUpdate, { capture: true, passive: true });
+        window.addEventListener('resize', vpUpdate); setInterval(vpUpdate, 500);
+      } catch (e) { console.warn('verse progress bar', e); }
+      return r;
+    }; }
+
+  // ---------- 8. phones, text selected (preview only): a floating toolbar next to the selection instead of a bar over the top bar ----------
+  // The same buttons as the top action bar, drawn as a rounded pill under the selection (the browser's own Copy/Select-all menu sits above it),
+  // moved with the selection and the scroll; main keeps the top bar.
+  if (/^Preview/.test(document.title)) {
+    let raf = 0;
+    const place = () => {
+      raf = 0;
+      const sb = document.querySelector('.selbar'); if (!sb || sb.hidden || !sb.classList.contains('cab')) return;
+      const sel = getSelection(); if (!sel.rangeCount || sel.isCollapsed) return;
+      sb.classList.add('pop');
+      const rc = sel.getRangeAt(0).getBoundingClientRect(); if (!rc.width && !rc.height) return;
+      const w = sb.offsetWidth, hh = sb.offsetHeight, vw = innerWidth, vh = (window.visualViewport ? visualViewport.height : innerHeight);
+      const x = Math.max(8, Math.min(vw - w - 8, rc.left + rc.width / 2 - w / 2));
+      let y = rc.bottom + 18;                                   // below the selection: the browser's own menu is above it
+      if (y + hh > vh - 12) y = Math.max(64, rc.top - hh - 64); // no room below: above, clear of the browser's menu
+      y = Math.max(8, Math.min(vh - hh - 12, y));
+      sb.style.left = x + 'px'; sb.style.top = y + 'px';
+    };
+    const later = () => { if (!raf) raf = requestAnimationFrame(place); };
+    document.addEventListener('selectionchange', GB.debounce(later, 260));
+    document.addEventListener('scroll', later, { capture: true, passive: true });
+    window.addEventListener('resize', later);
+    new MutationObserver(later).observe(document.body, { childList: true, subtree: false });
+    setInterval(() => { const sb = document.querySelector('.selbar'); if (sb && !sb.hidden && sb.classList.contains('cab') && !sb.style.top) later(); }, 300);
+  }
 
   // ---------- 3. Modern theme (beta) switch ----------
   const isNew = () => GB.prefs.accent === 'penta';

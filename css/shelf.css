@@ -9,10 +9,38 @@ body .vol {
   background: color-mix(in oklab, currentColor 3%, transparent);
 }
 body .vol .vol-author { padding-top: 0; }
-/* every second group gets a soft tint of the accent, like the alternate rows of a table (set by js/ui-look.js) */
-html body .vol.alt { background: color-mix(in oklab, var(--accent, currentColor) 8%, transparent); border-color: color-mix(in oklab, var(--accent, currentColor) 28%, transparent); }
+/* every second row of the shelf, single books and volume groups alike, gets a soft neutral grey tint, like the alternate rows of a table (set by js/ui-look.js) */
+html body .vol.alt { background: color-mix(in oklab, currentColor 8%, transparent); border-color: color-mix(in oklab, currentColor 28%, transparent); }
+/* a book card keeps its own colour and texture: the grey is laid over it as an inset shade, so it works in day, night and both looks */
+html body .bk.alt { box-shadow: inset 0 0 0 999px rgba(128, 128, 128, .13); }
+html[data-accent=penta] body .bk.alt { box-shadow: var(--p-card-sh, none), inset 0 0 0 999px rgba(128, 128, 128, .13); }
 
 /* the Modern theme switch row in Settings and in the Aa panel */
 .pref.look .pref-t { font-weight: 600; }
 .rp-look { padding-bottom: 6px; }
 .rp-look .rp-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* bottom bar: how much of the current verse is read (js/ui-look.js) */
+.vprog { position: fixed; left: 0; bottom: 0; width: 100%; height: 7px; z-index: 60; pointer-events: none; background: rgba(128, 128, 128, .28); }
+.vprog > i { display: block; height: 100%; width: 0; background: var(--accent, #207dff); border-radius: 0 4px 4px 0; transition: width .18s ease-out; }
+.vprog.done > i { border-radius: 0; opacity: .55; }
+@media (prefers-reduced-motion: reduce) { .vprog > i { transition: none; } }
+
+/* Reading order page: the grey explanation under "Custom order" is gone */
+.vo-top .vo-s { display: none; }
+
+/* text selection bar: always white text and icons, day and night (it is a dark bar in both) */
+html body .selbar, html body .selbar .sb-b, html body .selbar .sb-b span, html body .selbar .sb-ml, html body .selbar .ico, html body .selbar svg { color: #fff !important; }
+html body .selbar .ico, html body .selbar svg { fill: currentColor; }
+/* preview, phones: the same bar as a floating pill under the selection (js/ui-look.js section 8) */
+html body .selbar.cab.pop {
+  right: auto; bottom: auto; width: max-content; max-width: calc(100vw - 16px); height: auto;
+  padding: 5px; border-radius: 18px; margin: 0; transform: none;
+  background: rgba(32, 33, 36, .94); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .38), 0 0 0 1px rgba(255, 255, 255, .08);
+  animation: sbpop .16s ease-out;
+}
+html body .selbar.cab.pop .sb-b { min-width: 54px; padding: 6px 8px; border-radius: 13px; }
+html body .selbar.cab.pop .sb-done { border-right: 0; margin-right: 0; border-radius: 13px; background: rgba(255, 255, 255, .12); }
+@keyframes sbpop { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { html body .selbar.cab.pop { animation: none; } }
