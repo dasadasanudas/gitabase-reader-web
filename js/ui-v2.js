@@ -14,7 +14,7 @@
     const P = GB.prefs, A = GB.ACCENTS[P.accent] || GB.ACCENTS.tulasi, st = document.body.style, N = !!P.night;
     document.documentElement.dataset.accent = A.key;
     const ink = N ? GB.accentInk(true) : A.day;
-    const vars = A.key === 'tulasi' ? {} : {
+    const vars = (A.key === 'tulasi' || A.key === 'penta') ? {} : {
       '--accent': ink, '--link': N ? A.night : A.day, '--chip-b': N ? A.night : A.day, '--tab-on': N ? A.night : A.day,
       '--hdr': N ? A.hdrN : A.hdr, '--tab-bar': N ? A.hdrN : A.hdr, '--cmp-bar': N ? A.hdrN : A.hdr,
       '--transl': N ? A.night : 'color-mix(in oklab, ' + A.day + ' 82%, #000)',

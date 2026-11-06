@@ -140,9 +140,11 @@
     yamuna: { name: 'Yamuna', day: '#1f6f80', night: '#7cc3d1', hdr: '#173a44', hdrN: '#0f181b' },
     indigo: { name: 'Indigo', day: '#43489a', night: '#a3a8e6', hdr: '#262a55', hdrN: '#12131d' },
     lotus: { name: 'Lotus', day: '#a8436a', night: '#e59ab8', hdr: '#4d2033', hdrN: '#1a1115' },
-    gold: { name: 'Gold', day: '#8f6f1f', night: '#e2c47e', hdr: '#3f3519', hdrN: '#16140e' }
+    gold: { name: 'Gold', day: '#8f6f1f', night: '#e2c47e', hdr: '#3f3519', hdrN: '#16140e' },
+    // a whole look, not just a colour (css/penta.css): neutral bars, white cards, blue. ink = the grey the drawn icons use
+    penta: { name: 'Pentabase', day: '#207dff', night: '#61c6fa', hdr: '#f7f7f7', hdrN: '#212121', ink: '#5a5a5d', inkN: '#a9aaab' }
   };
-  GB.accentInk = nightInk => { const a = GB.ACCENTS[(GB.prefs && GB.prefs.accent) || 'tulasi'] || GB.ACCENTS.tulasi; return nightInk ? (a.key === 'tulasi' ? '#e2c47e' : a.night) : a.day; };
+  GB.accentInk = nightInk => { const a = GB.ACCENTS[(GB.prefs && GB.prefs.accent) || 'tulasi'] || GB.ACCENTS.tulasi; if (a.ink) return nightInk ? a.inkN : a.ink; return nightInk ? (a.key === 'tulasi' ? '#e2c47e' : a.night) : a.day; };
   for (const k in GB.ACCENTS) GB.ACCENTS[k].key = k;
   GB.artwork.clear = () => cache.clear();
   // every <img> asks for the app's old names; answer with the drawings
