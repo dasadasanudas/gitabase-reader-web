@@ -7,11 +7,13 @@
       Every second row of the shelf (books and volume groups) gets a soft grey tint.
    3. A visible switch for the Modern theme (beta) in Settings and in the Aa panel; off = the old look.
    4. The Modern accent itself (key 'penta', colours come from css/penta.css, not from inline styles). Safe to load where it already exists.
+      Modern is also the default look: anyone who has not picked an accent themselves starts on it.
    5. Word lookup: the gitabase texts write the anusvara as m + acute and the guttural nasal as n-acute, the reader draws them as the dotted letters;
       the lookup key now uses the books' own spelling first; then the plain spelling (jnana matches jñāna).
    6. Search: the status line names the file being read.
    7. A bar along the bottom of the reader shows how much of the current verse has been read (scrolled into view).
-   8. Preview only: on phones the selection toolbar floats next to the selected text. */
+   8. Preview only: on phones the selection toolbar floats next to the selected text.
+   9. Preview only: CC verses in Bengali script, made from the Roman transliteration; the Sanskrit chip reads Bengali on CC. */
 'use strict';
 (function (GB) {
   const { h } = GB;
@@ -103,6 +105,18 @@
       aa.apply(this, arguments);
       if (GB.prefs.accent === 'penta') for (const k of ['--accent', '--link', '--chip-b', '--tab-on', '--hdr', '--tab-bar', '--cmp-bar', '--transl', '--hdr-grad', '--wash', '--hover', '--sel']) document.body.style.removeProperty(k);
     }; }
+  // Modern is the default look. Whoever has not picked an accent themselves (the switch or the colour dots) starts on Modern;
+  // once they pick one, it is remembered and never replaced.
+  if (GB.loadPrefs && GB.setAccent) {
+    const lp = GB.loadPrefs;
+    GB.loadPrefs = async function () {
+      const r = await lp.apply(this, arguments);
+      try { const chosen = await GB.store.kvGet('accentChosen', false); if (!chosen && (!GB.prefs.accent || GB.prefs.accent === 'tulasi')) GB.prefs.accent = 'penta'; } catch (e) {}
+      return r;
+    };
+    const sa = GB.setAccent;
+    GB.setAccent = function () { try { GB.store.kvSet('accentChosen', true); } catch (e) {} return sa.apply(this, arguments); };
+  }
 
   // ---------- 2. pinned order (runs first, so every screen that renders the shelf sees it) ----------
   const RANK = B => { const a = lib.shortAbbr(B); if (a === 'BG') return lib.edition(B) ? 1 : 0; if (a === 'SB') return 2; if (a === 'CC') return 3; return 9; };
@@ -231,6 +245,92 @@
     window.addEventListener('resize', later);
     new MutationObserver(later).observe(document.body, { childList: true, subtree: false });
     setInterval(() => { const sb = document.querySelector('.selbar'); if (sb && !sb.hidden && sb.classList.contains('cab') && !sb.style.top) later(); }, 300);
+  }
+
+  // ---------- 9. Caitanya-caritamrita verses in Bengali script (preview only) ----------
+  // CC's verses are printed in Bengali script, but the library files only carry Roman transliteration (English) or Devanagari (Hindi).
+  // On the preview the verse line of every CC text is rebuilt in Bengali script from the Roman transliteration (the Hindi edition borrows the
+  // English edition's transliteration), and the "Sanskrit" chip reads "Bengali" while a CC text is open.
+  if (/^Preview/.test(document.title)) {
+    const VOW = { 'a': 'অ', 'ā': 'আ', 'i': 'ই', 'ī': 'ঈ', 'u': 'উ', 'ū': 'ঊ', 'ṛ': 'ঋ', 'ṝ': 'ৠ', 'ḷ': 'ঌ', 'e': 'এ', 'ai': 'ঐ', 'o': 'ও', 'au': 'ঔ' };
+    const SGN = { 'a': '', 'ā': 'া', 'i': 'ি', 'ī': 'ী', 'u': 'ু', 'ū': 'ূ', 'ṛ': 'ৃ', 'ṝ': 'ৄ', 'ḷ': 'ৢ', 'e': 'ে', 'ai': 'ৈ', 'o': 'ো', 'au': 'ৌ' };
+    const CON = { 'kh': 'খ', 'gh': 'ঘ', 'ch': 'ছ', 'jh': 'ঝ', 'ṭh': 'ঠ', 'ḍh': 'ঢ', 'th': 'থ', 'dh': 'ধ', 'ph': 'ফ', 'bh': 'ভ',
+      'k': 'ক', 'g': 'গ', 'ṅ': 'ঙ', 'c': 'চ', 'j': 'জ', 'ñ': 'ঞ', 'ṭ': 'ট', 'ḍ': 'ড', 'ṇ': 'ণ', 't': 'ত', 'd': 'দ', 'n': 'ন', 'p': 'প', 'b': 'ব', 'm': 'ম',
+      'y': 'য', 'r': 'র', 'l': 'ল', 'v': 'ব', 'ś': 'শ', 'ṣ': 'ষ', 's': 'স', 'h': 'হ' };
+    const VIR = '\u09cd', DIG = '০১২৩৪৫৬৭৮৯';
+    const canon = s => String(s).replace(/[mM]\u0301/g, 'ṁ').normalize('NFC').replace(/[\u1E3E\u1E3F\u1E40\u1E41\u1E42\u1E43]/g, 'ṁ').replace(/[\u0143\u0144]/g, 'ṅ').replace(/n\u0307/g, 'ṅ').toLowerCase().normalize('NFC');
+    function toBengali(src) {
+      const s = canon(src); let out = '', pend = false, prevVowel = false, i = 0;
+      while (i < s.length) {
+        const c = s[i], d2 = s.substr(i, 2);
+        if (VOW[d2] && (d2 === 'ai' || d2 === 'au')) { out += pend ? SGN[d2] : VOW[d2]; pend = false; prevVowel = true; i += 2; continue; }
+        if (CON[d2] && d2.length === 2) { out += (pend ? VIR : '') + CON[d2]; pend = true; prevVowel = false; i += 2; continue; }
+        if (CON[c]) {
+          let ch = CON[c];
+          if (c === 'y' && prevVowel && !pend) ch = 'য়';
+          out += (pend ? VIR : '') + ch; pend = true; prevVowel = false; i++; continue;
+        }
+        if (VOW[c]) { out += pend ? SGN[c] : VOW[c]; pend = false; prevVowel = true; i++; continue; }
+        if (c === 'ṁ' || c === 'ṃ') { out += 'ং'; pend = false; prevVowel = false; i++; continue; }
+        if (c === 'ḥ') { out += 'ঃ'; pend = false; prevVowel = false; i++; continue; }
+        if (c === "'" || c === '’') { out += 'ঽ'; pend = false; i++; continue; }
+        if (pend) { out += VIR; pend = false; }
+        prevVowel = false;
+        if (c === '|') { out += s[i + 1] === '|' ? '॥' : '।'; i += s[i + 1] === '|' ? 2 : 1; continue; }
+        if (c >= '0' && c <= '9') { out += DIG[+c]; i++; continue; }
+        out += c; i++;
+      }
+      return out + (pend ? VIR : '');
+    }
+    GB.toBengali = toBengali;
+    const bnText = root => {
+      const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), list = [];
+      for (let n; (n = w.nextNode());) list.push(n);
+      list.forEach(n => { n.nodeValue = toBengali(n.nodeValue); });
+    };
+    const isLatin = s => /[A-Za-zāīūṛṝḷṅñṭḍṇśṣṁḥ]/.test(s) && !/[\u0900-\u097F\u0980-\u09FF]/.test(s);
+    const fillBn = (target, srcHtml) => { target.innerHTML = srcHtml; bnText(target); target.lang = 'bn'; target.classList.add('bn-verse'); };
+    async function englishRoman(pos) {
+      const B2 = lib.books.find(b => b.lang === 'eng' && b.abbr === 'CC'); if (!B2) return '';
+      const ch2 = lib.findChapter(B2, pos.ch.song, pos.ch.ch); if (!ch2) return '';
+      const rows = await lib.chapterTexts(B2, ch2), i = lib.findTextIndex(rows, pos.row.no); if (i < 0) return '';
+      const t2 = await lib.text(ch2.part.D, rows[i].id); if (!t2) return '';
+      const tmp = document.createElement('div'); tmp.innerHTML = t2.translit || '';
+      if (!isLatin(tmp.textContent) && isLatin(String(t2.sanskrit || '').replace(/<[^>]+>/g, ''))) tmp.innerHTML = t2.sanskrit;
+      return isLatin(tmp.textContent) ? tmp.innerHTML : '';
+    }
+    function bengaliVerse(v, o) {
+      let on = true; try { const s = GB.parts.shown(o.mode || 'verse'); on = !!s.skt; } catch (e) {}
+      if (!on) return;
+      const skt = v.querySelector('#verseSanskrit'), tl = v.querySelector('#verseTranslit');
+      if (tl && isLatin(tl.textContent)) {
+        if (skt) { if (!/[\u0980-\u09FF]/.test(skt.textContent)) fillBn(skt, tl.innerHTML); return; }
+        const bn = document.createElement('div'); bn.id = 'verseSanskrit';
+        bn.className = String(tl.className).replace(/verseTranslit/g, 'verseSanskrit').replace(/\balt\b/g, '').trim();
+        fillBn(bn, tl.innerHTML); tl.before(bn); return;
+      }
+      if (skt && o.B.lang !== 'eng' && !/[\u0980-\u09FF]/.test(skt.textContent)) {
+        const pos = { ch: o.ch, row: o.row };
+        englishRoman(pos).then(html => { if (html && skt.isConnected) fillBn(skt, html); }).catch(() => {});
+      }
+    }
+    { const rv = GB.render.verse;
+      GB.render.verse = function (t, o) {
+        const v = rv.apply(this, arguments);
+        try { if (o && o.B && o.B.abbr === 'CC') bengaliVerse(v, o); } catch (e) { console.warn('bengali verse', e); }
+        return v;
+      }; }
+    // while a CC text is open, the "Sanskrit" chip and the verse-order row read "Bengali"
+    let rl = 0;
+    const relabel = () => {
+      rl = 0;
+      const cur = GB.reader.current && GB.reader.current(); if (!cur || !cur.B || cur.B.abbr !== 'CC') return;
+      document.querySelectorAll('.rp, .vo-list, .vo-top').forEach(root => {
+        const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let n; (n = w.nextNode());) if (n.nodeValue.trim() === 'Sanskrit') n.nodeValue = n.nodeValue.replace('Sanskrit', 'Bengali');
+      });
+    };
+    new MutationObserver(() => { if (!rl) rl = requestAnimationFrame(relabel); }).observe(document.body, { childList: true, subtree: true });
   }
 
   // ---------- 3. Modern theme (beta) switch ----------

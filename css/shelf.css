@@ -49,3 +49,6 @@ html body .selbar.cab.pop .sb-b { min-width: 54px; padding: 6px 8px; border-radi
 html body .selbar.cab.pop .sb-done { border-right: 0; margin-right: 0; border-radius: 13px; background: rgba(255, 255, 255, .12); }
 @keyframes sbpop { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { html body .selbar.cab.pop { animation: none; } }
+
+/* Caitanya-caritamrita verse line in Bengali script (js/ui-look.js section 9) */
+.verse .bn-verse { font-family: "Noto Serif Bengali", "Noto Sans Bengali", "Vrinda", "Nirmala UI", "Bangla Sangam MN", "Kohinoor Bangla", serif; font-style: normal; font-size: 1.14em; line-height: 1.85; text-align: center; color: var(--t1); }
