@@ -1,21 +1,16 @@
 /* Gitabase Reader web: shelf additions. Works with the old look and the Modern theme. */
 
-/* works in several parts or volumes (Srimad-Bhagavatam, Caitanya-caritamrita, Prabhupada-lilamrita ...): one bordered group */
-body .vol {
-  border: 1.5px solid color-mix(in oklab, currentColor 22%, transparent);
+/* works in several parts or volumes (Srimad-Bhagavatam, Caitanya-caritamrita, Prabhupada-lilamrita ...): one bordered group.
+   The inside is a little darker than the page so you can see where one book starts and stops, even though the border is thin. */
+html body .vol, html[data-accent=penta] body .vol {
+  border: 1.5px solid color-mix(in oklab, currentColor 30%, transparent);
   border-radius: 16px;
   padding: 12px 12px 14px;
   margin: 14px 0;
-  background: color-mix(in oklab, currentColor 3%, transparent);
+  background: rgba(0, 0, 0, .05);
 }
+html body.night .vol, html[data-accent=penta] body.night .vol { background: rgba(0, 0, 0, .16); }
 body .vol .vol-author { padding-top: 0; }
-/* every second row of the shelf (single books and volume groups) gets a barely-there shade of its own colour, like the alternate rows of a table (set by js/ui-look.js).
-   Text, borders and icons keep their colour, so nothing reads as disabled or already read. */
-html body .vol.alt { background: color-mix(in oklab, currentColor 3%, transparent); border-color: color-mix(in oklab, currentColor 22%, transparent); }
-html body .bk.alt { box-shadow: inset 0 0 0 999px rgba(0, 0, 0, .028); }
-html body.night .bk.alt { box-shadow: inset 0 0 0 999px rgba(255, 255, 255, .035); }
-html[data-accent=penta] body .bk.alt { box-shadow: var(--p-card-sh, none), inset 0 0 0 999px rgba(0, 0, 0, .028); }
-html[data-accent=penta] body.night .bk.alt { box-shadow: var(--p-card-sh, none), inset 0 0 0 999px rgba(255, 255, 255, .035); }
 
 /* the Modern theme switch row in Settings and in the Aa panel */
 .pref.look .pref-t { font-weight: 600; }
