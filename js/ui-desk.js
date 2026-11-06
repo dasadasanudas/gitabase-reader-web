@@ -72,6 +72,8 @@
     sp();
     const pg = GB.left.find('settings'); if (!pg || !H.classList.contains('desk') || pg.el.querySelector('.dm-nav')) return;
     const nav = h('nav.dm-nav', { 'aria-label': 'Settings sections' });
+    // where a heading sits inside the scrolling list, measured from the screen (offsetTop depends on which ancestor is positioned)
+    const at = el => pg.body.scrollTop + el.getBoundingClientRect().top - pg.body.getBoundingClientRect().top;
     const build = () => {
       nav.innerHTML = '';
       const cats = Array.from(pg.body.querySelectorAll('.pref-cat'));
@@ -79,11 +81,11 @@
       // and a reference kept from before would point at a removed element (the buttons then did nothing)
       cats.forEach((c, i) => nav.append(h('button.dm-nav-b' + (i === 0 ? '.on' : ''), { type: 'button', text: c.textContent, onclick: () => {
         const cur = pg.body.querySelectorAll('.pref-cat')[i]; if (!cur) return;
-        const top = cur.offsetTop - pg.body.offsetTop - 4; pg.body.scrollTo({ top, behavior: 'smooth' }); } })));
+        pg.body.scrollTo({ top: Math.max(0, at(cur) - 4), behavior: 'smooth' }); } })));
     };
     const spy = () => {
       const cats = Array.from(pg.body.querySelectorAll('.pref-cat')); let k = 0;
-      cats.forEach((c, i) => { if (c.offsetTop - pg.body.offsetTop - 40 <= pg.body.scrollTop) k = i; });
+      cats.forEach((c, i) => { if (at(c) - 40 <= pg.body.scrollTop) k = i; });
       if (pg.body.scrollTop + pg.body.clientHeight >= pg.body.scrollHeight - 4) k = cats.length - 1;
       Array.from(nav.children).forEach((b, i) => b.classList.toggle('on', i === k));
     };
