@@ -2,15 +2,16 @@
    1. Books that carry no chapters rows (Teachings of Lord Caitanya, Nectar of Devotion, Teachings of Queen Kunti ...: ebooks whose
       texts are chapters) get one chapter built from their text rows, so they open and read as paged ebooks.
    2. Shelf order: Bhagavad-gita, Srimad-Bhagavatam, Caitanya-caritamrita always first, in that order, in every language.
-   3. A visible switch for the Pentabase look (beta) in Settings and in the Aa panel; off = the old look.
-   4. The Pentabase accent itself (colours come from css/penta.css, not from inline styles). Safe to load where it already exists. */
+   3. A visible switch for the Modern theme (beta) in Settings and in the Aa panel; off = the old look.
+   4. The Modern accent itself (key 'penta', colours come from css/penta.css, not from inline styles). Safe to load where it already exists. */
 'use strict';
 (function (GB) {
   const { h } = GB;
   const lib = GB.lib, L = GB.left;
 
-  // ---------- 4. the Pentabase accent ----------
-  if (!GB.ACCENTS.penta) GB.ACCENTS.penta = { name: 'Pentabase', day: '#207dff', night: '#61c6fa', hdr: '#f7f7f7', hdrN: '#212121', ink: '#5a5a5d', inkN: '#a9aaab', key: 'penta' };
+  // ---------- 4. the Modern accent ----------
+  if (!GB.ACCENTS.penta) GB.ACCENTS.penta = { name: 'Modern', day: '#207dff', night: '#61c6fa', hdr: '#f7f7f7', hdrN: '#212121', ink: '#5a5a5d', inkN: '#a9aaab', key: 'penta' };
+  GB.ACCENTS.penta.name = 'Modern';
   { const ai = GB.accentInk;
     GB.accentInk = nightInk => { const a = GB.ACCENTS[(GB.prefs && GB.prefs.accent) || 'tulasi'] || GB.ACCENTS.tulasi; return a.ink ? (nightInk ? a.inkN : a.ink) : ai(nightInk); }; }
   { const aa = GB.applyAccent;
@@ -51,19 +52,19 @@
     return B._synthP ? B._synthP.then(go) : go();
   };
 
-  // ---------- 3. New look (beta) switch ----------
+  // ---------- 3. Modern theme (beta) switch ----------
   const isNew = () => GB.prefs.accent === 'penta';
   async function setLook(on) {
     if (on === isNew()) return;
     if (on) { await GB.store.kvSet('lookPrev', GB.prefs.accent); GB.setAccent('penta'); }
     else { const p = await GB.store.kvGet('lookPrev', 'tulasi'); GB.setAccent(p && p !== 'penta' && GB.ACCENTS[p] ? p : 'tulasi'); }
   }
-  const SUB_ON = 'Pentabase look is on: its colours, shapes, shadows and motion. Switch off for the old look.';
-  const SUB_OFF = 'Try the Pentabase look in day and night: new colours, shapes, shadows and motion. Off = the old look.';
+  const SUB_ON = 'Modern theme is on: its colours, shapes, shadows and motion, in day and night. Switch off for the old look.';
+  const SUB_OFF = 'Try the Modern theme in day and night: new colours, shapes, shadows and motion. Off = the old look.';
   function settingsRow() {
     const on = isNew();
     return h('div.pref.click.look', { onclick: () => setLook(!isNew()) },
-      h('div.pref-main', null, h('div.pref-t', { text: 'New look (beta)' }), h('div.pref-s', { text: on ? SUB_ON : SUB_OFF })),
+      h('div.pref-main', null, h('div.pref-t', { text: 'Modern theme (beta)' }), h('div.pref-s', { text: on ? SUB_ON : SUB_OFF })),
       h('span.sw' + (on ? '.on' : '')));
   }
   const sp = GB.settingsPage;
@@ -77,9 +78,9 @@
     const sec = h('div.rp-sec.rp-look');
     const draw = () => {
       const on = isNew(); sec.innerHTML = '';
-      sec.append(h('div.rp-line', null, h('div.rp-h', { text: 'New look (beta)' }),
-        h('button.sw2' + (on ? '.on' : ''), { type: 'button', role: 'switch', 'aria-checked': on ? 'true' : 'false', 'aria-label': 'New look (beta)', onclick: async () => { await setLook(!isNew()); draw(); } }, h('i'))),
-        h('div.rp-note', { text: on ? 'Pentabase look. Off = the old look.' : 'Off = the old look.' }));
+      sec.append(h('div.rp-line', null, h('div.rp-h', { text: 'Modern theme (beta)' }),
+        h('button.sw2' + (on ? '.on' : ''), { type: 'button', role: 'switch', 'aria-checked': on ? 'true' : 'false', 'aria-label': 'Modern theme (beta)', onclick: async () => { await setLook(!isNew()); draw(); } }, h('i'))),
+        h('div.rp-note', { text: on ? 'Modern theme. Off = the old look.' : 'Off = the old look.' }));
     };
     draw(); return sec;
   }
