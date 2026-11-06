@@ -10,7 +10,8 @@
    5. Word lookup: the gitabase texts write the anusvara as m + acute and the guttural nasal as n-acute, the reader draws them as the dotted letters;
       the lookup key now uses the books' own spelling first; then the plain spelling (jnana matches jñāna).
    6. Search: the status line names the file being read.
-   7. A bar along the bottom of the reader shows how much of the current verse has been read (scrolled into view). */
+   7. A bar along the bottom of the reader shows how much of the current verse has been read (scrolled into view).
+   8. Preview only: on phones the selection toolbar floats next to the selected text. */
 'use strict';
 (function (GB) {
   const { h } = GB;
@@ -205,6 +206,32 @@
       } catch (e) { console.warn('verse progress bar', e); }
       return r;
     }; }
+
+  // ---------- 8. phones, text selected (preview only): a floating toolbar next to the selection instead of a bar over the top bar ----------
+  // The same buttons as the top action bar, drawn as a rounded pill under the selection (the browser's own Copy/Select-all menu sits above it),
+  // moved with the selection and the scroll; main keeps the top bar.
+  if (/^Preview/.test(document.title)) {
+    let raf = 0;
+    const place = () => {
+      raf = 0;
+      const sb = document.querySelector('.selbar'); if (!sb || sb.hidden || !sb.classList.contains('cab')) return;
+      const sel = getSelection(); if (!sel.rangeCount || sel.isCollapsed) return;
+      sb.classList.add('pop');
+      const rc = sel.getRangeAt(0).getBoundingClientRect(); if (!rc.width && !rc.height) return;
+      const w = sb.offsetWidth, hh = sb.offsetHeight, vw = innerWidth, vh = (window.visualViewport ? visualViewport.height : innerHeight);
+      const x = Math.max(8, Math.min(vw - w - 8, rc.left + rc.width / 2 - w / 2));
+      let y = rc.bottom + 18;                                   // below the selection: the browser's own menu is above it
+      if (y + hh > vh - 12) y = Math.max(64, rc.top - hh - 64); // no room below: above, clear of the browser's menu
+      y = Math.max(8, Math.min(vh - hh - 12, y));
+      sb.style.left = x + 'px'; sb.style.top = y + 'px';
+    };
+    const later = () => { if (!raf) raf = requestAnimationFrame(place); };
+    document.addEventListener('selectionchange', GB.debounce(later, 260));
+    document.addEventListener('scroll', later, { capture: true, passive: true });
+    window.addEventListener('resize', later);
+    new MutationObserver(later).observe(document.body, { childList: true, subtree: false });
+    setInterval(() => { const sb = document.querySelector('.selbar'); if (sb && !sb.hidden && sb.classList.contains('cab') && !sb.style.top) later(); }, 300);
+  }
 
   // ---------- 3. Modern theme (beta) switch ----------
   const isNew = () => GB.prefs.accent === 'penta';

@@ -28,3 +28,19 @@ html[data-accent=penta] body .bk.alt { box-shadow: var(--p-card-sh, none), inset
 
 /* Reading order page: the grey explanation under "Custom order" is gone */
 .vo-top .vo-s { display: none; }
+
+/* text selection bar: always white text and icons, day and night (it is a dark bar in both) */
+html body .selbar, html body .selbar .sb-b, html body .selbar .sb-b span, html body .selbar .sb-ml, html body .selbar .ico, html body .selbar svg { color: #fff !important; }
+html body .selbar .ico, html body .selbar svg { fill: currentColor; }
+/* preview, phones: the same bar as a floating pill under the selection (js/ui-look.js section 8) */
+html body .selbar.cab.pop {
+  right: auto; bottom: auto; width: max-content; max-width: calc(100vw - 16px); height: auto;
+  padding: 5px; border-radius: 18px; margin: 0; transform: none;
+  background: rgba(32, 33, 36, .94); -webkit-backdrop-filter: blur(14px) saturate(1.4); backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .38), 0 0 0 1px rgba(255, 255, 255, .08);
+  animation: sbpop .16s ease-out;
+}
+html body .selbar.cab.pop .sb-b { min-width: 54px; padding: 6px 8px; border-radius: 13px; }
+html body .selbar.cab.pop .sb-done { border-right: 0; margin-right: 0; border-radius: 13px; background: rgba(255, 255, 255, .12); }
+@keyframes sbpop { from { opacity: 0; transform: translateY(6px) scale(.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { html body .selbar.cab.pop { animation: none; } }
