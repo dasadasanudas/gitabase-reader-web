@@ -5,7 +5,7 @@ For every .db / .gitabase in the input folder: copy it, add the indexes the read
 the same ones on first open), VACUUM, then split the file into fixed-size chunks so the browser downloads only
 the pages it reads. Writes <out>/catalog.json, which the app loads automatically when served over http(s).
 Each catalog entry also carries "meta" (tables, books, songs, chapters ... see gb_meta.py), so the reader can
-list the whole library without opening any database.
+list the whole library without opening any database, and "search" (a prebuilt word index, see gb_index.py).
 
 usage: python tools/prepare_library.py databases site/library [--chunk 262144]
 """
@@ -17,6 +17,14 @@ try:
 except Exception as _e:   # the catalogue metadata is an extra: without it the reader opens each file itself
     print('gb_meta unavailable:', _e)
     build_meta = lambda con: None
+
+try:
+    from gb_index import build_index
+except Exception as _e:   # the word index is an extra: without it search uses the file's own full-text index
+    print('gb_index unavailable:', _e)
+    build_index = None
+INDEX_BUDGET = int(os.environ.get('GB_INDEX_MB', '160')) * 1048576   # all word indexes together, so the hosted site stays small
+_index_used = 0
 
 INDEXES = [
     ('textnums', ['book_id', 'song', 'ch_no', 'text_seq_no']),
@@ -91,6 +99,7 @@ def prepare(src, tmp):
     return made, books, meta
 
 def main():
+    global _index_used
     ap = argparse.ArgumentParser()
     ap.add_argument('src'); ap.add_argument('out'); ap.add_argument('--chunk', type=int, default=262144)
     a = ap.parse_args()
@@ -119,12 +128,28 @@ def main():
                 if not b: break
                 with open(os.path.join(d, '%05d.bin' % n), 'wb') as o: o.write(b)
                 n += 1
+        search = None
+        if build_index:
+            try:
+                idir = d + '-idx'
+                st = build_index(tmp, idir)
+                if st and _index_used + st['bytes'] <= INDEX_BUDGET:
+                    _index_used += st['bytes']
+                    final = d + '-' + st['hash'] + '-idx'      # the folder name changes whenever the index does (browser cache)
+                    os.rename(idir, final)
+                    search = {'v': 1, 'dir': os.path.basename(final) + '/', 'shards': st['shards'], 'bytes': st['bytes'], 'docs': st['docs']}
+                else:
+                    shutil.rmtree(idir, ignore_errors=True)
+                    if st: print('word index for %s skipped: %d bytes would exceed the budget' % (name, st['bytes']))
+            except Exception as e:
+                print('word index skipped:', e); shutil.rmtree(d + '-idx', ignore_errors=True)
         os.remove(tmp)
         rel = os.path.relpath(d, os.path.dirname(os.path.abspath(a.out))).replace(os.sep, '/')
         entry = {'id': fid, 'name': name, 'size': size, 'chunkSize': a.chunk, 'chunks': n, 'base': rel + '/', 'sha256': digest, 'books': books}
         if meta: entry['meta'] = meta
+        if search: entry['search'] = search
         files.append(entry)
-        print('%s: %d bytes, %d chunks, %d indexes, meta %s, books: %s' % (name, size, n, len(made), 'yes' if meta else 'no', ', '.join(books)))
+        print('%s: %d bytes, %d chunks, %d indexes, meta %s, word index %s, books: %s' % (name, size, n, len(made), 'yes' if meta else 'no', 'yes' if search else 'no', ', '.join(books)))
     with open(os.path.join(a.out, 'catalog.json'), 'w', encoding='utf-8') as f:
         json.dump({'version': 1, 'files': files}, f, ensure_ascii=False, indent=1)
     print('catalog:', len(files), 'file(s)')
