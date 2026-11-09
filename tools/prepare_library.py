@@ -77,6 +77,19 @@ def build_wbw(con):
     con.execute('CREATE INDEX gbweb_wbw_f ON gbweb_wbw (f)')
     return len(out)
 
+SYNTH_VIEW = ('CREATE VIEW textindex_content AS SELECT n._id AS docid, n._id AS c0_id, n.book_id AS c1book_id, n.song AS c2song, '
+    'n.ch_no AS c3ch_no, n.txt_no AS c4txt_no, trim(coalesce(x.transl1, \'\') || \' \' || coalesce(x.translit, \'\')) AS c5translit, '
+    'x.transl2 AS c6transl2, x.comment AS c7comment FROM textnums n JOIN texts x ON x._id = n._id')
+
+def add_search_view(con):
+    """Files without a full-text index (no textindex tables) get a view with the same column names, so the reader's result
+    rows work unchanged and gb_index.py can build a word index from it. Returns True when the view was added."""
+    t = cols(con, 'texts'); n = cols(con, 'textnums')
+    if cols(con, 'textindex_content') or cols(con, 'textindex_segdir'): return False
+    if not all(c in t for c in ('transl1', 'translit', 'transl2', 'comment')) or not all(c in n for c in ('book_id', 'song', 'ch_no', 'txt_no')): return False
+    con.execute(SYNTH_VIEW)
+    return True
+
 def prepare(src, tmp):
     shutil.copyfile(src, tmp)
     con = sqlite3.connect(tmp)
@@ -89,14 +102,21 @@ def prepare(src, tmp):
         made.append(name)
     wbw = build_wbw(con)
     if wbw: made.append('gbweb_wbw(%d rows)' % wbw)
+    synth = False
+    try: synth = add_search_view(con)
+    except Exception as e: print('search view skipped:', e)
+    if synth: made.append('textindex_content(view)')
     con.commit()
     con.execute('PRAGMA journal_mode=DELETE')
     con.execute('VACUUM')
     books = [r[0] for r in con.execute('SELECT title FROM books ORDER BY sort, _id')] if cols(con, 'books') else []
     try: meta = build_meta(con)
     except Exception as e: print('meta skipped:', e); meta = None
+    if meta and synth:
+        meta['hasFts'] = True; meta['synthFts'] = True
+        meta['tables']['textindex_content'] = cols(con, 'textindex_content')
     con.close()
-    return made, books, meta
+    return made, books, meta, synth
 
 def main():
     global _index_used
@@ -112,7 +132,7 @@ def main():
             if f.read(15) != b'SQLite format 3': print('skip (not SQLite):', name); continue
         fid = hashlib.sha1(name.encode()).hexdigest()[:10]
         tmp = os.path.join(tempfile.gettempdir(), 'gbweb_' + fid + '.db')
-        made, books, meta = prepare(path, tmp)
+        made, books, meta, synth = prepare(path, tmp)
         # chunk folders carry a content hash, so a changed file gets new URLs (no stale browser or offline cache)
         h = hashlib.sha256()
         with open(tmp, 'rb') as f:
@@ -137,7 +157,7 @@ def main():
                     _index_used += st['bytes']
                     final = d + '-' + st['hash'] + '-idx'      # the folder name changes whenever the index does (browser cache)
                     os.rename(idir, final)
-                    search = {'v': 1, 'dir': os.path.basename(final) + '/', 'shards': st['shards'], 'bytes': st['bytes'], 'docs': st['docs']}
+                    search = {'v': 1, 'dir': os.path.basename(final) + '/', 'shards': st['shards'], 'bytes': st['bytes'], 'docs': st['docs'], 'synth': bool(synth)}
                 else:
                     shutil.rmtree(idir, ignore_errors=True)
                     if st: print('word index for %s skipped: %d bytes would exceed the budget' % (name, st['bytes']))

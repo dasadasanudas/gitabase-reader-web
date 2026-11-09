@@ -5,8 +5,9 @@ every word of every query. This builds the same word -> documents map once, at b
 that the browser fetches in parallel (a typical word is one request of 20-200 KB).
 
 Input: the file's textindex_content table (docid, c1book_id, c5translit, c6transl2, c7comment), the very text the
-FTS index was built from. Tokens follow SQLite's "simple" tokenizer exactly (ASCII letters/digits and every
-non-ASCII character are word characters, only ASCII is lower-cased), so a word means the same here as in FTS.
+FTS index was built from (files without FTS get a view of that name, see prepare_library.py). Tokens follow SQLite's
+"simple" tokenizer exactly (ASCII letters/digits and every non-ASCII character are word characters, only ASCII is
+lower-cased), so a word means the same here as in FTS.
 
 Output folder:
   dir.json   {"v":1,"cols":[1,5,6,7],"docs":N,"n":shards,"first":[first term of each shard]}
@@ -38,10 +39,11 @@ def build_index(db_path, out_dir, log=print):
     except sqlite3.Error: have = []
     cols = [(c, b) for c, b in COLS if c in have]
     if not cols: return None
+    key = 'docid' if 'docid' in have else 'rowid'      # a real FTS table: rowid; the view made for files without FTS: docid
     sel = ', '.join('"%s"' % c for c, _ in cols)
     posts = {}                      # term -> [bytearray, last docid, count]
     docs = 0; t0 = time.time()
-    for row in con.execute('SELECT rowid, %s FROM textindex_content ORDER BY rowid' % sel):
+    for row in con.execute('SELECT %s, %s FROM textindex_content ORDER BY %s' % (key, sel, key)):
         docid = row[0]; docs += 1
         mask, tf = {}, {}
         for (c, bit), v in zip(cols, row[1:]):

@@ -25,7 +25,7 @@
   }
   function lastLE(arr, t) { let lo = 0, hi = arr.length - 1, r = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (arr[m] <= t) { r = m; lo = m + 1; } else hi = m - 1; } return r; }
 
-  function makeEngine(base, fetchFn) {
+  function makeEngine(base, fetchFn, loose) {   // loose: files without a real full-text index; a phrase becomes all its words
     const get = fetchFn || ((u) => fetch(u));
     const key = u => base + u;
     async function dir() {
@@ -65,7 +65,11 @@
     }
     async function ev(n, want) {
       if (n.t === 'term') {
-        if (n.tokens.length !== 1) throw NO;
+        if (n.tokens.length !== 1) {
+          if (!loose) throw NO;
+          const ks = n.tokens.map((t, i) => ({ t: 'term', tokens: [t], prefix: !!n.prefix && i === n.tokens.length - 1, cols: n.cols }));
+          return ev({ t: 'and', kids: ks }, want);
+        }
         let w = want, noTf = false;
         if (n.cols) { w = 0; for (const c of n.cols) w |= BIT[c] || 0; if (!w) throw NO; noTf = n.cols.length === 1 && n.cols[0] === 1; }
         return postings(n.tokens[0], !!n.prefix, w, noTf);
@@ -113,7 +117,7 @@
     const D = Array.from(lib.dbs.values()).find(x => x.num === dbId); if (!D || !D.rec || !/^h:/.test(D.rec.id)) return null;
     const f = (lib.catalog.files || []).find(x => 'h:' + x.id === D.rec.id); if (!f || !f.search) return null;
     const base = new URL('../' + f.search.dir, new URL(f.base, document.baseURI)).href;
-    if (!engines.has(base)) engines.set(base, makeEngine(base));
+    if (!engines.has(base)) engines.set(base, makeEngine(base, null, !!f.search.synth));
     return engines.get(base);
   }
   if (typeof GBDB !== 'undefined' && typeof document !== 'undefined') {
