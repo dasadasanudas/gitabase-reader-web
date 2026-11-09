@@ -10,9 +10,10 @@ FTS index was built from (files without FTS get a view of that name, see prepare
 lower-cased), so a word means the same here as in FTS.
 
 Output folder:
-  dir.json   {"v":1,"cols":[1,5,6,7],"docs":N,"n":shards,"first":[first term of each shard]}
+  dir.json   {"v":1,"cols":[1,5,6,7],"docs":N,"n":shards,"first":[first term of each shard],"loc":rows,"chunk":size}
   s0000.gz.. gzip of: repeat{ varint len, term(utf-8), varint ndocs, varint nbytes, postings }
              postings = repeat{ varint (docid_delta<<4 | colmask), varint tf }   colmask bits: 1=c1 2=c5 4=c6 8=c7
+  loc.gz     which file chunks hold each docid's row (see gb_locmap.py); only for a real textindex_content table
 Terms are sorted in UTF-16 code unit order (the order JavaScript compares strings in).
 """
 import gzip, hashlib, json, os, re, sqlite3, time
@@ -33,7 +34,7 @@ def tokens(v):
     if isinstance(v, (bytes, bytearray)): v = bytes(v).decode('utf-8', 'replace')
     return [t.translate(LOWER) for t in TOK.findall(str(v))]
 
-def build_index(db_path, out_dir, log=print):
+def build_index(db_path, out_dir, chunk=262144, log=print):
     con = sqlite3.connect(db_path)
     try: have = [r[1] for r in con.execute('PRAGMA table_info("textindex_content")')]
     except sqlite3.Error: have = []
@@ -75,6 +76,14 @@ def build_index(db_path, out_dir, log=print):
         posts[t] = None
     flush()
     meta = {'v': 1, 'cols': [b for _, b in cols], 'docs': docs, 'n': n, 'first': first}
+    try:                            # which file chunks hold each result row (loc.gz), so the browser can fetch them in parallel
+        from gb_locmap import build_locmap
+        lm = build_locmap(db_path, chunk)
+        if lm:
+            data = gzip.compress(lm[0], 9, mtime=0)
+            with open(os.path.join(out_dir, 'loc.gz'), 'wb') as f: f.write(data)
+            hsh.update(data); total += len(data); meta['loc'] = lm[1]; meta['chunk'] = chunk
+    except Exception as e: log('row locations skipped: %s' % e)
     txt = json.dumps(meta, ensure_ascii=False, separators=(',', ':')); hsh.update(txt.encode('utf-8'))
     with open(os.path.join(out_dir, 'dir.json'), 'w', encoding='utf-8') as f: f.write(txt)
     log('index: %d shards, %.1f MB gzip' % (n, total / 1048576))

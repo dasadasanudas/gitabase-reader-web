@@ -111,6 +111,43 @@
     return { search, dir };
   }
 
+  // ---- result rows: the reader fetches the 40 rows of a results page one 256 KB chunk at a time. loc.gz says which chunks hold
+  // each docid, so they are fetched in parallel first (the service worker / HTTP cache then answers the reader's own reads).
+  const locs = new Map(), asked = new Set();
+  async function locMap(base, chunkSize) {
+    if (!locs.has(base)) locs.set(base, (async () => {
+      const d = await dirOf(base); if (!d.loc || d.chunk !== chunkSize) return null;
+      const r = await fetch(base + 'loc.gz'); if (!r.ok) return null;
+      const b = await gunzip(await r.arrayBuffer()), st = { p: 0 }, doc = [], c0 = [], sp = [];
+      let id = 0; while (st.p < b.length) { id += vr(b, st); doc.push(id); c0.push(vr(b, st)); sp.push(vr(b, st)); }
+      return { doc, c0, sp };
+    })().catch(() => null));
+    return locs.get(base);
+  }
+  async function dirOf(base) { if (!dirs.has(base)) dirs.set(base, fetch(base + 'dir.json').then(r => { if (!r.ok) throw NO; return r.json(); })); return dirs.get(base); }
+  async function prefetchRows(D, ids) {
+    const lib = root.GB.lib, f = (lib.catalog && lib.catalog.files || []).find(x => D.rec && 'h:' + x.id === D.rec.id);
+    if (!f || !f.search || f.search.synth) return;
+    const base = new URL('../' + f.search.dir, new URL(f.base, document.baseURI)).href, m = await locMap(base, f.chunkSize); if (!m) return;
+    const want = new Set();
+    for (const id of ids) {
+      let lo = 0, hi = m.doc.length - 1, k = -1; while (lo <= hi) { const mid = (lo + hi) >> 1; if (m.doc[mid] < id) lo = mid + 1; else { if (m.doc[mid] === id) k = mid; hi = mid - 1; } }
+      if (k < 0) continue;
+      const a = m.c0[k], z = a + m.sp[k]; want.add(a); if (z !== a) want.add(z);
+    }
+    const todo = Array.from(want).filter(c => !asked.has(base + c)).sort((a, b) => a - b); todo.forEach(c => asked.add(base + c));
+    const cb = new URL(f.base, document.baseURI).href; let next = 0;
+    const lane = async () => { while (next < todo.length) { const c = todo[next++]; try { const r = await fetch(cb + String(c).padStart(5, '0') + '.bin'); await r.arrayBuffer(); } catch (e) { asked.delete(base + c); } } };
+    await Promise.all(Array.from({ length: Math.min(10, todo.length) }, lane));
+  }
+  if (root.GB && root.GB.lib && root.GB.lib.q && typeof document !== 'undefined') {
+    const q0 = root.GB.lib.q;
+    root.GB.lib.q = async function (D, sql, bind) {
+      if (Array.isArray(bind) && bind.length > 1 && /FROM textindex_content WHERE docid IN/.test(sql)) { try { await prefetchRows(D, bind); } catch (e) { console.warn('row prefetch skipped', e); } }
+      return q0.apply(this, arguments);
+    };
+  }
+
   const engines = new Map();
   function engineFor(dbId) {
     const lib = root.GB && root.GB.lib; if (!lib || !lib.catalog) return null;
