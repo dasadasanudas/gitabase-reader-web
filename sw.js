@@ -1,13 +1,14 @@
 /* Gitabase Reader web: offline support for the hosted site (GitHub Pages). Not used when index.html is opened as a file.
    App files: network first, cached copy when offline. Fonts and images: cache first.
-   Library chunks (library/<id>-<hash>/NNNNN.bin): cache first, so every page read once stays readable offline.
+   Library chunks (library/<id>-<hash>/NNNNN.bin) and word-index shards (library/<id>-<hash>-idx/*): cache first, so every
+   page read once stays readable offline.
    A changed database gets a new folder name, and folders no longer listed in catalog.json are dropped from the cache. */
 'use strict';
 const BUILD = '__BUILD__';                 // stamped by tools/build_site.py
 const ASSETS = [/*__ASSETS__*/];          // fonts and toolbar images, stamped by tools/build_site.py
 const SHELL = 'gb-shell-' + BUILD, STATIC = 'gb-static-v3', CHUNKS = 'gb-chunks-v1';
 const CORE = ['./', 'index.html', 'css/app.css', 'css/own-art.css', 'css/theme.css', 'manifest.webmanifest', 'js/sqlite-src.js', 'js/db.js', 'js/util.js', 'js/assets.js', 'js/icons.js',
-  'js/store.js', 'js/library.js', 'js/render.js', 'js/notes.js', 'js/ui-home.js', 'js/ui-book.js', 'js/ui-reader.js', 'js/ui-extra.js', 'js/ui-v2.js', 'js/ui-desk.js', 'js/ui-look.js', 'css/v2.css', 'css/desk.css', 'css/penta.css', 'css/penta-size.css', 'css/shelf.css', 'js/app.js'];
+  'js/store.js', 'js/library.js', 'js/render.js', 'js/notes.js', 'js/ui-home.js', 'js/ui-book.js', 'js/ui-reader.js', 'js/ui-extra.js', 'js/ui-v2.js', 'js/ui-desk.js', 'js/ui-look.js', 'js/ui-search.js', 'css/v2.css', 'css/desk.css', 'css/penta.css', 'css/penta-size.css', 'css/shelf.css', 'js/app.js'];
 
 self.addEventListener('install', e => e.waitUntil((async () => {
   const c = await caches.open(SHELL); await c.addAll(CORE);
@@ -22,7 +23,7 @@ self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const url = new URL(req.url); if (url.origin !== location.origin) return;
   const p = url.pathname;
-  if (/\/library\/[^/]+\/\d+\.bin$/.test(p)) e.respondWith(cacheFirst(CHUNKS, req));
+  if (/\/library\/[^/]+\/\d+\.bin$/.test(p) || /\/library\/[^/]+-idx\/[^/]+$/.test(p)) e.respondWith(cacheFirst(CHUNKS, req));
   else if (/\/library\/catalog\.json$/.test(p)) e.respondWith(catalog(req));
   else if (/\.(ttf|otf|woff2?|png|jpe?g|gif|webp|svg)$/i.test(p)) e.respondWith(cacheFirst(STATIC, req));
   else e.respondWith(networkFirst(req));
@@ -50,7 +51,11 @@ async function catalog(req) {
 }
 async function prune(cat) {
   try {
-    const keep = new Set((cat.files || []).map(f => new URL(f.base, self.registration.scope).pathname));
+    const keep = new Set();
+    for (const f of cat.files || []) {
+      const b = new URL(f.base, self.registration.scope); keep.add(b.pathname);
+      if (f.search && f.search.dir) keep.add(new URL('../' + f.search.dir, b).pathname);
+    }
     const c = await caches.open(CHUNKS);
     for (const k of await c.keys()) { const p = new URL(k.url).pathname; if (!keep.has(p.slice(0, p.lastIndexOf('/') + 1))) await c.delete(k); }
   } catch (e) { /* keep the cache as it is */ }
