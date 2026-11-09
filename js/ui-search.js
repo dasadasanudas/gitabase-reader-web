@@ -126,7 +126,7 @@
   }
   async function dirOf(base) { if (!dirs.has(base)) dirs.set(base, fetch(base + 'dir.json').then(r => { if (!r.ok) throw NO; return r.json(); })); return dirs.get(base); }
   async function prefetchRows(D, ids) {
-    const lib = root.GB.lib, f = (lib.catalog && lib.catalog.files || []).find(x => D.rec && 'h:' + x.id === D.rec.id);
+    note('prefetch ' + ids.length); const lib = root.GB.lib, f = (lib.catalog && lib.catalog.files || []).find(x => D.rec && 'h:' + x.id === D.rec.id);
     if (!f || !f.search || f.search.synth) return;
     const base = new URL('../' + f.search.dir, new URL(f.base, document.baseURI)).href, m = await locMap(base, f.chunkSize); if (!m) return;
     const want = new Set();
@@ -139,13 +139,24 @@
     const cb = new URL(f.base, document.baseURI).href; let next = 0;
     const lane = async () => { while (next < todo.length) { const c = todo[next++]; try { const r = await fetch(cb + String(c).padStart(5, '0') + '.bin'); await r.arrayBuffer(); } catch (e) { asked.delete(base + c); } } };
     await Promise.all(Array.from({ length: Math.min(10, todo.length) }, lane));
+    note('prefetched ' + todo.length);
   }
   if (root.GB && root.GB.lib && root.GB.lib.q && typeof document !== 'undefined') {
     const q0 = root.GB.lib.q;
     root.GB.lib.q = async function (D, sql, bind) {
       if (Array.isArray(bind) && bind.length > 1 && /FROM textindex_content WHERE docid IN/.test(sql)) { try { await prefetchRows(D, bind); } catch (e) { console.warn('row prefetch skipped', e); } }
-      return q0.apply(this, arguments);
+      const t0 = performance.now(), isRows = /FROM textindex_content WHERE docid IN/.test(sql);
+      try { const r = await q0.apply(this, arguments); if (isRows) note('rows ' + (r && r.length) + ' ' + Math.round(performance.now() - t0) + 'ms'); return r; }
+      catch (e) { note('qERR ' + String(e && e.message || e).slice(0, 90)); throw e; }
     };
+  }
+
+  // ?dbg in the address shows what the search is doing in the page title (no console needed)
+  const dbg = typeof location !== 'undefined' && /[?&]dbg\b/.test(location.search), trace = [];
+  function note(s) { if (!dbg) return; trace.push(s); document.title = trace.slice(-6).join(' | '); }
+  if (dbg) {
+    window.addEventListener('unhandledrejection', e => note('REJECT ' + String(e.reason && e.reason.message || e.reason).slice(0, 80)));
+    window.addEventListener('error', e => note('ERR ' + String(e.message).slice(0, 80)));
   }
 
   const engines = new Map();
@@ -163,7 +174,7 @@
       if (!distAst) {
         try {
           const e = engineFor(dbId);
-          if (e) { const t0 = performance.now(), r = await e.search(ast, cols); r.fastMs = Math.round(performance.now() - t0); console.log('fast search', r.length, 'texts,', r.fastMs, 'ms'); return r; }
+          if (e) { const t0 = performance.now(), r = await e.search(ast, cols); r.fastMs = Math.round(performance.now() - t0); console.log('fast search', r.length, 'texts,', r.fastMs, 'ms'); note('fts ' + r.length + ' ' + r.fastMs + 'ms'); return r; }
         } catch (err) { if (err !== NO) console.warn('fast search failed, using the file index', err); }
       }
       return orig.apply(GBDB, arguments);
